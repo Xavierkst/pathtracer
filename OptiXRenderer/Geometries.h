@@ -29,35 +29,38 @@ struct Triangle
     //int triIndices[3];
     //int normIndices[3];
 
-    // include triangle materials here: 
-    optix::float3 ambient;
+    
+    optix::float3 ambient; // include triangle materials here: 
     Attributes attributes;
 
     // contains the transf -- used to inverse transform
     // the ray later (just peek the top of stack, and assign to transform)
-    optix::Matrix4x4 transform;
+    optix::Matrix4x4 transform; // used for inv. transf of ray
+
+    Triangle(optix::float3 v1, optix::float3 v2, optix::float3 v3,
+                optix::float3 n1,  optix::float3 n2, optix::float3 n3, 
+                optix::float3 amb, float shine, optix::float3 diff, 
+                optix::float3 spec, optix::float3 emiss) {
+        vertices[0] = v1;
+        vertices[1] = v2;
+        vertices[2] = v3;
+
+        normals[0] = n1;
+        normals[1] = n2;
+        normals[2] = n3;
+
+        ambient = amb;
+
+        attributes.shininess = shine;
+        attributes.diffuse = diff;
+        attributes.specular = spec;
+        attributes.emission = emiss;
+    }
 
     Triangle() {
         for (int i = 0; i < 3; i++) {
             vertices[i] = optix::make_float3(.0f);
             normals[i] = optix::make_float3(.0f);
-            //triIndices[i] = 0;
-            //normIndices[i] = 0;
-        }
-
-        ambient = optix::make_float3(.0f);
-        attributes.shininess = .0f;
-        attributes.diffuse = optix::make_float3(.0f);
-        attributes.specular = optix::make_float3(.0f);
-        attributes.emission = optix::make_float3(.0f);
-    }
-
-    Triangle(optix::float3 ) {
-        for (int i = 0; i < 3; i++) {
-            vertices[i] = optix::make_float3(.0f);
-            normals[i] = optix::make_float3(.0f);
-            //triIndices[i] = 0;
-            //normIndices[i] = 0;
         }
 
         ambient = optix::make_float3(.0f);
@@ -81,6 +84,20 @@ struct Sphere
     // contains the transf -- used to inverse transform
     // the ray later
     optix::Matrix4x4 transform;
+
+    Sphere(optix::float3 pos, float r,
+        optix::float3 amb, float shine, optix::float3 diff,
+        optix::float3 spec, optix::float3 emiss) {
+        
+        position = pos;
+        radius = r;
+        ambient = amb;
+
+        attributes.shininess = shine;
+        attributes.diffuse = diff;
+        attributes.specular = spec;
+        attributes.emission = emiss;
+    }
 
     Sphere() {
         position = optix::make_float3(.0f);
