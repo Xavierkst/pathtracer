@@ -16,7 +16,7 @@ rtDeclareVariable(int1, frameID, , );
 
 // Camera info 
 
-// TODO:: delcare camera varaibles here
+// TODO:: delcare camera variables here
 
 RT_PROGRAM void generateRays()
 {

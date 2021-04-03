@@ -78,6 +78,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             scene->outputFilename = svalues[0];
         }
         // TODO: use the examples above to handle other commands
+
     }
 
     in.close();
