@@ -23,11 +23,13 @@ RT_PROGRAM void intersect(int primIndex)
     if (rtPotentialIntersection(t))
     {
         // Pass attributes
-        attrib.ambient = sphere.attributes.ambient; 
         attrib.emission = sphere.attributes.emission; 
         attrib.specular = sphere.attributes.specular; 
-        //attrib.ambient = sphere.attributes.ambient; 
-        //attrib = sphere.attributes.specular;
+        attrib.shininess = sphere.attributes.shininess;
+        attrib.diffuse = sphere.attributes.diffuse;
+
+        // Am I missing ambient?
+
         // TODO: assign attribute variables here
 
         rtReportIntersection(0);
