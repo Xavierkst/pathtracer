@@ -5,6 +5,7 @@
 
 #include "Geometries.h"
 #include "Light.h"
+#include "Camera.h"
 
 struct Scene
 {
@@ -23,6 +24,7 @@ struct Scene
     std::vector<PointLight> plights;
 
     // TODO: add other variables that you need here
+    Camera camera;
 
     Scene()
     {
