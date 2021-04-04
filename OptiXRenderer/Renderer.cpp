@@ -12,7 +12,8 @@ Renderer::Renderer(std::shared_ptr<Scene> scene) : scene(scene)
     context->setEntryPointCount(1); // only one entry point
     context->setPrintEnabled(true); // enable the use of rtPrintf in programs
     context->setPrintBufferSize(2048); 
-    context->setMaxTraceDepth(3); // Set maximum recursion depth.
+    // context->setMaxTraceDepth(3); // Set maximum recursion depth.
+    context->setMaxTraceDepth(this->scene->depth); // Set maximum recursion depth.
 
     // Create the resultBuffer
     resultBuffer = context->createBuffer(RT_BUFFER_OUTPUT); // only device can write
@@ -45,7 +46,7 @@ void Renderer::initPrograms()
 
     // Miss progarm
     programs["miss"] = createProgram("Common.cu", "miss");
-    programs["miss"]["backgroundColor"]->setFloat(0.f, 0.f, 1.f);
+    programs["miss"]["backgroundColor"]->setFloat(0.f, 0.f, .0f);
     context->setMissProgram(0, programs["miss"]);
 
     // Exception program
@@ -127,6 +128,8 @@ void Renderer::buildScene()
     currentFrame = 0;
     numFrames = 1;
 
+    Camera cam = scene->camera; 
+
     // Set width and height
     resultBuffer->setSize(width, height);
     programs["rayGen"]["resultBuffer"]->set(resultBuffer);
@@ -140,6 +143,15 @@ void Renderer::buildScene()
     material->setAnyHitProgram(1, programs["shadowCaster"]);
 
     // TODO: pass data to programs here
+    // Camera variables
+    programs["rayGen"]["eye"]->setFloat(cam.pos);
+    programs["rayGen"]["U"]->setFloat(cam.u);
+    programs["rayGen"]["V"]->setFloat(cam.v);
+    programs["rayGen"]["W"]->setFloat(cam.w);
+    programs["rayGen"]["fovy"]->setFloat(cam.fovy);
+    programs["rayGen"]["width"]->setInt(width);
+    programs["rayGen"]["height"]->setInt(height);
+    
 
     // Create buffers and pass them to Optix programs that the buffers
     Buffer triBuffer = createBuffer(scene->triangles);
