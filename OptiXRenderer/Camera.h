@@ -22,7 +22,7 @@ struct Camera {
 		pos = look_from;
 		lookAt = look_at;
 		up = up_vec;
-		fovy = fov;
+		fovy = (fov / 180.0f) * M_PIf; // convert to radians
 
 		w = optix::normalize(pos - lookAt);
 		optix::float3 b = up;

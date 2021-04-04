@@ -26,9 +26,9 @@ RT_PROGRAM void closestHit()
 
     //float3 result = make_float3(0, 1, 0);
     float3 result = attrib.ambient;
-    result += dlights[0].light_color;
-    for (int i = 0; i < plights.size(); i++) {
-        result += plights[i].light_color;
-    }
+    //result += dlights[0].light_color;
+    //for (int i = 0; i < plights.size(); i++) {
+    //    result += plights[i].light_color;
+    //}
     payload.radiance = result;
 }

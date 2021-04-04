@@ -25,8 +25,9 @@ struct Triangle
     // TODO: define the triangle structure
     //int maxverts; 
     //int maxvertnorms;
+    //optix::float3 normal;
     optix::float3 vertices[3];
-    optix::float3 normals[3];
+    optix::float3 vertNormals[3];
     //int triIndices[3];
     //int normIndices[3];
 
@@ -46,10 +47,14 @@ struct Triangle
         vertices[1] = v2;
         vertices[2] = v3;
 
-        normals[0] = optix::make_float3(.0f);
-        normals[1] = optix::make_float3(.0f);
-        normals[2] = optix::make_float3(.0f);
+        vertNormals[0] = optix::make_float3(.0f);
+        vertNormals[1] = optix::make_float3(.0f);
+        vertNormals[2] = optix::make_float3(.0f);
 
+        // calculate normal: (prob leave it in intersection test
+        // for GPU to calculate
+        
+        
         attributes.ambient = amb;
         attributes.shininess = shine;
         attributes.diffuse = diff;
@@ -66,9 +71,9 @@ struct Triangle
         vertices[1] = v2;
         vertices[2] = v3;
 
-        normals[0] = n1;
-        normals[1] = n2;
-        normals[2] = n3;
+        vertNormals[0] = n1;
+        vertNormals[1] = n2;
+        vertNormals[2] = n3;
 
         attributes.ambient = amb;
         attributes.shininess = shine;
@@ -80,7 +85,7 @@ struct Triangle
     Triangle() {
         for (int i = 0; i < 3; i++) {
             vertices[i] = optix::make_float3(.0f);
-            normals[i] = optix::make_float3(.0f);
+            vertNormals[i] = optix::make_float3(.0f);
         }
 
         attributes.ambient = optix::make_float3(.2f);

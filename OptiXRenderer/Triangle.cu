@@ -1,6 +1,7 @@
 #include "optix.h"
 #include "optix_device.h"
 #include "Geometries.h"
+#include "Payloads.h"
 
 using namespace optix;
 
@@ -10,6 +11,9 @@ rtDeclareVariable(Ray, ray, rtCurrentRay, );
 
 // Attributes to be passed to material programs 
 rtDeclareVariable(Attributes, attrib, attribute attrib, );
+
+// Transfer values into payload variable for color calc in closestHit()
+rtDeclareVariable(Payload, payload, rtPayload, );
 
 RT_PROGRAM void intersect(int primIndex)
 {
@@ -22,8 +26,12 @@ RT_PROGRAM void intersect(int primIndex)
     // get plane normal
     float3 edge1 = tri.vertices[1] - tri.vertices[0]; 
     float3 edge2 = tri.vertices[2] - tri.vertices[0]; 
-    // we have normal to the plane / tri
+    // we have normal of triangle, N
     float3 N = normalize(cross(edge1, edge2)); 
+
+    // triangles don't need to worry about transforming
+    // ray by M-1 since it is still a triangle (but for spheres, 
+    // must consider)
 
     // find parametric dist t: 
     t = (dot(tri.vertices[0], N) - dot(ray.origin, N)) / dot(ray.direction, N);
@@ -38,6 +46,7 @@ RT_PROGRAM void intersect(int primIndex)
     // Normal and orthogonal vect is < 0
     // Note: tri is ACW 
     float3 hitPt = ray.origin + t * ray.direction; 
+
     float3 orthogEdge;
     // check 1 (total 3 edges to check) 
     float3 edgeV1V0 = tri.vertices[1] - tri.vertices[0]; 
@@ -67,12 +76,24 @@ RT_PROGRAM void intersect(int primIndex)
 
     // made it here, means the hit point is inside the tri!
 
+    // find normal at hitPoint, pass into payload
+    // Note: the triangle already transformed during parsing
+    //float3 hitPt = ray.origin + t * ray.direction; 
+    // cross prod of any 2 edges from above
+    float3 hitPtNormal = N;
+
+
     // Report intersection (material programs will handle the rest)
     if (rtPotentialIntersection(t))
     {
         // TODO: assign attribute variables here
         // Pass attributes: i.e. materials of the object
         attrib = tri.attributes;
+
+        // Pass hitPt and normal at hitPt into payload 
+        // to calculate payload.radiance in closestHit()
+        payload.hitPoint = hitPt;
+        payload.hitPointNormal = hitPtNormal;
 
         rtReportIntersection(0);
     }

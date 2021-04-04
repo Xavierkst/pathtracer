@@ -46,6 +46,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     auto scene = std::make_shared<Scene>();
 
     transStack.push(optix::Matrix4x4::identity());
+    //optix::Matrix4x4 currTransf = transStack.top();
 
     std::string str, cmd;
 
@@ -150,10 +151,11 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
 
         // next is Geometry, and Transformations
         else if (cmd == "sphere" && readValues(s, 4, fvalues)) {
-           scene->spheres.push_back(
-               Sphere(optix::make_float3(
-                   fvalues[0], fvalues[1], fvalues[2]), fvalues[3], 
-                   ambient, shininess, diffuse, specular, emission));
+            Sphere temp_sphere(optix::make_float3(
+                fvalues[0], fvalues[1], fvalues[2]), fvalues[3],
+                ambient, shininess, diffuse, specular, emission);
+            temp_sphere.transform = transStack.top();
+            scene->spheres.push_back(temp_sphere);
         }
 
         else if (cmd == "vertex" && readValues(s, 3, fvalues)) {
@@ -172,29 +174,57 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         }
 
         else if (cmd == "tri" && readValues(s, 3, ivalues)) {
-            scene->triangles.push_back(Triangle(
-                scene->vertices[ivalues[0]], 
-                scene->vertices[ivalues[1]], 
-                scene->vertices[ivalues[2]], 
-                ambient, shininess, diffuse, 
-                specular, emission)); 
+            Triangle push_tri(
+                transformPoint(scene->vertices[ivalues[0]]),
+                transformPoint(scene->vertices[ivalues[1]]),
+                transformPoint(scene->vertices[ivalues[2]]),
+                ambient, shininess, diffuse,
+                specular, emission);
+            push_tri.transform = transStack.top();
+
+            scene->triangles.push_back(push_tri); 
         }
 
-         else if (cmd == "trinormal" && readValues(s, 3, ivalues)) {
-            scene->triangles.push_back(Triangle(
+        else if (cmd == "trinormal" && readValues(s, 3, ivalues)) {
+            Triangle temp_tri(
                 // load in vertices
-                scene->vertices[ivalues[0]], 
-                scene->vertices[ivalues[1]], 
-                scene->vertices[ivalues[2]], 
+                scene->vertices[ivalues[0]],
+                scene->vertices[ivalues[1]],
+                scene->vertices[ivalues[2]],
                 // load in normals corresp to vertices
-                scene->normals[ivalues[0]], 
-                scene->normals[ivalues[1]], 
-                scene->normals[ivalues[2]], 
-                ambient, shininess, diffuse, 
-                specular, emission)); 
+                scene->normals[ivalues[0]],
+                scene->normals[ivalues[1]],
+                scene->normals[ivalues[2]],
+                ambient, shininess, diffuse,
+                specular, emission);
+            temp_tri.transform = transStack.top();
+
+            scene->triangles.push_back(temp_tri); 
         }
 
-       
+        else if (cmd == "pushTransform") {
+            transStack.push(transStack.top());
+        }
+      
+        else if (cmd == "popTransform") {
+            transStack.pop(); 
+        }
+
+        else if (cmd == "translate" && readValues(s, 3, fvalues)) {
+            rightMultiply(optix::Matrix4x4::translate(
+                optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));
+        }
+
+        else if (cmd == "scale" && readValues(s, 3, fvalues)) {
+            rightMultiply(optix::Matrix4x4::scale(
+                optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));
+        }
+
+        else if (cmd == "rotate" && readValues(s, 4, fvalues)) {
+            float angle_radians = (fvalues[0] / 180.0f )* M_PIf;
+            rightMultiply(optix::Matrix4x4::rotate( angle_radians,
+                optix::make_float3(fvalues[1], fvalues[2], fvalues[3])));
+        }
     }
 
     in.close();
