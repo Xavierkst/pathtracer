@@ -14,6 +14,7 @@ struct Attributes
     optix::float3 diffuse;
     optix::float3 specular;
     optix::float3 emission;
+    optix::float3 ambient;
 };
 
 /**
@@ -30,13 +31,33 @@ struct Triangle
     //int normIndices[3];
 
     
-    optix::float3 ambient; // include triangle materials here: 
+    //optix::float3 ambient; // include triangle materials here: 
     Attributes attributes;
 
     // contains the transf -- used to inverse transform
     // the ray later (just peek the top of stack, and assign to transform)
     optix::Matrix4x4 transform; // used for inv. transf of ray
 
+    // constructor for tris w/ vertex, but no normals
+    Triangle(optix::float3 v1, optix::float3 v2, optix::float3 v3,
+                optix::float3 amb, float shine, optix::float3 diff, 
+                optix::float3 spec, optix::float3 emiss) {
+        vertices[0] = v1;
+        vertices[1] = v2;
+        vertices[2] = v3;
+
+        normals[0] = optix::make_float3(.0f);
+        normals[1] = optix::make_float3(.0f);
+        normals[2] = optix::make_float3(.0f);
+
+        attributes.ambient = amb;
+        attributes.shininess = shine;
+        attributes.diffuse = diff;
+        attributes.specular = spec;
+        attributes.emission = emiss;
+    }
+
+    // constructor for tris w/ vertex + normals
     Triangle(optix::float3 v1, optix::float3 v2, optix::float3 v3,
                 optix::float3 n1,  optix::float3 n2, optix::float3 n3, 
                 optix::float3 amb, float shine, optix::float3 diff, 
@@ -49,8 +70,7 @@ struct Triangle
         normals[1] = n2;
         normals[2] = n3;
 
-        ambient = amb;
-
+        attributes.ambient = amb;
         attributes.shininess = shine;
         attributes.diffuse = diff;
         attributes.specular = spec;
@@ -63,7 +83,7 @@ struct Triangle
             normals[i] = optix::make_float3(.0f);
         }
 
-        ambient = optix::make_float3(.0f);
+        attributes.ambient = optix::make_float3(.2f);
         attributes.shininess = .0f;
         attributes.diffuse = optix::make_float3(.0f);
         attributes.specular = optix::make_float3(.0f);
@@ -103,7 +123,7 @@ struct Sphere
         position = optix::make_float3(.0f);
         radius = .0f;
 
-        ambient = optix::make_float3(.0f);
+        ambient = optix::make_float3(.2f);
         attributes.shininess = .0f;
         attributes.diffuse = optix::make_float3(.0f);
         attributes.specular = optix::make_float3(.0f);
