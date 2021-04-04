@@ -23,9 +23,12 @@ rtDeclareVariable(Attributes, attrib, attribute attrib, );
 RT_PROGRAM void closestHit()
 {
     // TODO: calculate the color using the Blinn-Phong reflection model
-     
 
-
-    float3 result = make_float3(0, 1, 0);
+    //float3 result = make_float3(0, 1, 0);
+    float3 result = attrib.ambient;
+    result += dlights[0].light_color;
+    for (int i = 0; i < plights.size(); i++) {
+        result += plights[i].light_color;
+    }
     payload.radiance = result;
 }

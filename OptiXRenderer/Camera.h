@@ -9,7 +9,7 @@ struct Camera {
 	optix::float3 pos; // lookFrom
 	optix::float3 lookAt; 
 	optix::float3 up;
-	float fov;
+	float fovy;
 
 	// TODO: find w, v and u using cross products
 	optix::float3 w; 
@@ -17,12 +17,12 @@ struct Camera {
 	optix::float3 v; 
 
 	Camera(optix::float3 look_from, 
-		optix::float3 look_at, optix::float3 up_vec, float field_of_view) {
+		optix::float3 look_at, optix::float3 up_vec, float fov) {
 
 		pos = look_from;
 		lookAt = look_at;
 		up = up_vec;
-		fov = field_of_view;
+		fovy = fov;
 
 		w = optix::normalize(pos - lookAt);
 		optix::float3 b = up;
@@ -34,7 +34,7 @@ struct Camera {
 		pos = optix::make_float3(.0f);
 		lookAt = optix::make_float3(.0f);
 		up = optix::make_float3(.0f);
-		fov = .0f;
+		fovy = .0f;
 
 		w = optix::make_float3(.0f);
 		u = optix::make_float3(.0f);
