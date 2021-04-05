@@ -33,12 +33,10 @@ RT_PROGRAM void intersect(int primIndex)
     float3 ray_orig = make_float3(sphere.transform.inverse() * make_float4(ray.origin, 1));
     float3 ray_dir = normalize(make_float3(sphere.transform.inverse() * make_float4(ray.direction, 0)));
 
-     
-
     // use quadratic equation and find solutions for t 
     optix::float3 rad = ray_orig - sphere.position; 
     a = dot(ray_dir, ray_dir); 
-    b = 2 * dot(ray_dir, rad);
+    b = 2.0f * dot(ray_dir, rad);
     c = dot(rad, rad) - (sphere.radius * sphere.radius);
 
     // find discriminant i.e. the value inside sqrt (b^2 - 4ac) 
@@ -75,6 +73,7 @@ RT_PROGRAM void intersect(int primIndex)
         // TODO: assign attribute variables here
         // Pass attributes
         attrib = sphere.attributes;
+        //rtPrintf("made it! %f", hitPt.x);
         // Pass hitPt and normal at hitPt into payload 
         // to calculate payload.radiance in closestHit()
 

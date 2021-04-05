@@ -88,7 +88,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         {
             scene->outputFilename = svalues[0];
         }
-        // TODO: use the examples above to handle other commands
 
         else if ( cmd == "maxdepth" && readValues(s, 1, fvalues)) {
             scene->depth = (unsigned int)fvalues[0]; 
@@ -210,6 +209,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             transStack.pop(); 
         }
 
+        // method for implementating own transforms
+        // https://forums.developer.nvidia.com/t/applying-transforms-to-geometries/68316/4
         else if (cmd == "translate" && readValues(s, 3, fvalues)) {
             rightMultiply(optix::Matrix4x4::translate(
                 optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));

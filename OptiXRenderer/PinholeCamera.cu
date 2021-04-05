@@ -30,21 +30,14 @@ rtDeclareVariable(int, height, , );
 
 RT_PROGRAM void generateRays()
 {
-    size_t2 screen_size = resultBuffer.size();
-    //rtPrintf("the total number of pixels is: %d", screen_size);
-
     float3 result = make_float3(0.f);
-
     // TODO: calculate the ray direction (change the following lines)
     float3 origin = eye;  // origin should be pos of camera
-    
-    //float2 d = make_float2(launchIndex) / make_float2(screen_size) * 2.0f - 1.0f;
     float aspectRatio = (float) width / (float)height;
-    float alpha = ((2.0f * ((float)launchIndex.x + 0.5f) / (float)width) - 1.0f) * tan(fovy / 2.0f) * aspectRatio;
-    float beta = (1.0f - (2.0f * ((float)launchIndex.y + 0.5f) / (float)height) ) * tan(fovy/2.0f);
+    float alpha = (1.0f - (2.0f * ((float)launchIndex.x + 0.5f) / (float)width)) * tan(fovy / 2.0f)* aspectRatio;
+    float beta = ((2.0f * ((float)launchIndex.y + 0.5f) / (float)height) - 1.0f) * tan(fovy / 2.0f);
     //rtPrintf("alpha beta: %f %f", alpha, beta);
-
-    //float3 dir = make_float3(0, 0, 1); // dir should be toward some (i,j)-th cell?
+    //rtPrintf("TAN FOVX: %f", tan(fovy / 2.0f) * aspectRatio);
     float3 dir = normalize(alpha * U + beta * V - W);
 
     float epsilon = 0.001f; 
