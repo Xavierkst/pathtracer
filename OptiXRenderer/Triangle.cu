@@ -32,9 +32,12 @@ RT_PROGRAM void intersect(int primIndex)
     // triangles don't need to worry about transforming
     // ray by M-1 since it is still a triangle (but for spheres, 
     // must consider)
+    float3 ray_orig = make_float3(tri.transform.inverse() * make_float4(ray.origin, 1));
+    float3 ray_dir = normalize(make_float3(tri.transform.inverse() * make_float4(ray.direction, 0)));
 
     // find parametric dist t: 
-    t = (dot(tri.vertices[0], N) - dot(ray.origin, N)) / dot(ray.direction, N);
+    //t = (dot(tri.vertices[0], N) - dot(ray.origin, N)) / dot(ray.direction, N);
+    t = (dot(tri.vertices[0], N) - dot(ray_orig, N)) / dot(ray_dir, N);
     if (t < 0) {
         // triangle is not positive distance to ray, i.e. behind
         return; 
@@ -45,7 +48,7 @@ RT_PROGRAM void intersect(int primIndex)
     // we know hit point is outside of triangle if dot product of 
     // Normal and orthogonal vect is < 0
     // Note: tri is ACW 
-    float3 hitPt = ray.origin + t * ray.direction; 
+    float3 hitPt = ray_orig + t * ray_dir; 
 
     float3 orthogEdge;
     // check 1 (total 3 edges to check) 
