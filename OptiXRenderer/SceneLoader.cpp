@@ -225,9 +225,9 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         }
 
         else if (cmd == "rotate" && readValues(s, 4, fvalues)) {
-            float angle_radians = (fvalues[0] / 180.0f )* M_PIf;
+            float angle_radians = (fvalues[3] / 180.0f )* M_PIf;
             rightMultiply(optix::Matrix4x4::rotate( angle_radians,
-                optix::make_float3(fvalues[1], fvalues[2], fvalues[3])));
+                optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));
         }
     }
 

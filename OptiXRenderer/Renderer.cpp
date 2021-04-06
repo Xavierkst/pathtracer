@@ -46,7 +46,7 @@ void Renderer::initPrograms()
 
     // Miss progarm
     programs["miss"] = createProgram("Common.cu", "miss");
-    programs["miss"]["backgroundColor"]->setFloat(1.f, 0.f, .0f);
+    programs["miss"]["backgroundColor"]->setFloat(.0f, 0.f, .0f);
     context->setMissProgram(0, programs["miss"]);
 
     // Exception program
@@ -151,7 +151,7 @@ void Renderer::buildScene()
     programs["rayGen"]["fovy"]->setFloat(cam.fovy);
     programs["rayGen"]["width"]->setInt(width);
     programs["rayGen"]["height"]->setInt(height);
-    
+    programs["rayGen"]["depth"]->setInt(scene->depth);
 
     // Create buffers and pass them to Optix programs that the buffers
     Buffer triBuffer = createBuffer(scene->triangles);

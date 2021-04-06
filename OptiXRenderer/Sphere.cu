@@ -63,9 +63,27 @@ RT_PROGRAM void intersect(int primIndex)
 
     t = t_sol1;
 
+    float epsilon = 0.001f;
     // find normal at hitPoint, pass into payload
     float3 hitPt = ray_orig + t * ray_dir; 
+
+    // obtain normal
     float3 hitPtNormal = normalize(hitPt - sphere.position);
+    // transform normal to worldspace
+    hitPtNormal = normalize(make_float3(
+        (sphere.transform.inverse()).transpose() * make_float4(hitPtNormal, 0)));
+
+    // transform hitPoint back into worldspace from local space
+    hitPt = make_float3(sphere.transform * make_float4(hitPt, 1)); 
+    // find distance t:  
+    t = length(hitPt - ray.origin);
+    
+    // Account for shadow Acne??  
+    hitPt += hitPtNormal * epsilon;
+
+    // compute reflection ray direction in world space
+    //float3 reflectionDir = normalize(ray_dir - 2.0f * dot(ray_dir, hitPtNormal) * hitPtNormal);
+    float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, hitPtNormal) * hitPtNormal);
 
     // Report intersection (material programs will handle the rest)
     if (rtPotentialIntersection(t))
@@ -77,13 +95,11 @@ RT_PROGRAM void intersect(int primIndex)
         // Pass hitPt and normal at hitPt into payload 
         // to calculate payload.radiance in closestHit()
 
-        // transform hitPt back: Mp 
-        payload.hitPoint = 
-            make_float3(sphere.transform * make_float4(hitPt, 1)); // applying Mp 
+        payload.hitPoint = hitPt; 
+            //make_float3(sphere.transform * make_float4(hitPt, 1)); // applying Mp 
         // transform normal at hitPoint back (M-1)^T
-        payload.hitPointNormal = normalize(
-            make_float3((sphere.transform.inverse()).transpose() * 
-                make_float4(hitPtNormal, 0)));
+        payload.hitPointNormal = hitPtNormal;
+        payload.dir = reflectionDir;
 
         rtReportIntersection(0);
     }

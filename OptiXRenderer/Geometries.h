@@ -103,7 +103,7 @@ struct Sphere
     float radius;
 
     // include Sphere materials here:
-    optix::float3 ambient;
+    //optix::float3 ambient;
     Attributes attributes;
 
     // contains the transf -- used to inverse transform
@@ -116,8 +116,9 @@ struct Sphere
         
         position = pos;
         radius = r;
-        ambient = amb;
+        //ambient = amb;
 
+        attributes.ambient = amb;
         attributes.shininess = shine;
         attributes.diffuse = diff;
         attributes.specular = spec;
@@ -128,7 +129,7 @@ struct Sphere
         position = optix::make_float3(.0f);
         radius = .0f;
 
-        ambient = optix::make_float3(.2f);
+        attributes.ambient = optix::make_float3(.2f);
         attributes.shininess = .0f;
         attributes.diffuse = optix::make_float3(.0f);
         attributes.specular = optix::make_float3(.0f);

@@ -32,7 +32,9 @@ RT_PROGRAM void intersect(int primIndex)
     // triangles don't need to worry about transforming
     // ray by M-1 since it is still a triangle (but for spheres, 
     // must consider)
-    float3 ray_orig = make_float3(tri.transform.inverse() * make_float4(ray.origin, 1));
+    float4 temp_ray = tri.transform.inverse() * make_float4(ray.origin, 1);
+    float3 ray_orig = make_float3(temp_ray / (float)temp_ray.w);
+    //ray_orig = make_float3(ray)
     float3 ray_dir = normalize(make_float3(tri.transform.inverse() * make_float4(ray.direction, 0)));
 
     // find parametric dist t: 
@@ -48,8 +50,9 @@ RT_PROGRAM void intersect(int primIndex)
     // we know hit point is outside of triangle if dot product of 
     // Normal and orthogonal vect is < 0
     // Note: tri is ACW 
-    float3 hitPt = ray_orig + t * ray_dir; 
-
+    float epsilon = 0.001f;
+    float3 hitPt = ray_orig + t * ray_dir + N*epsilon; // account for shadow acne: 
+    
     float3 orthogEdge;
     // check 1 (total 3 edges to check) 
     float3 edgeV1V0 = tri.vertices[1] - tri.vertices[0]; 
@@ -83,8 +86,16 @@ RT_PROGRAM void intersect(int primIndex)
     // Note: the triangle already transformed during parsing
     //float3 hitPt = ray.origin + t * ray.direction; 
     // cross prod of any 2 edges from above
-    float3 hitPtNormal = N;
 
+    // transform normal to worldspace
+    float3 hitPtNormal = normalize(make_float3((
+        tri.transform.inverse()).transpose() * make_float4(N, 0)));
+    // transform hit point to worldspace
+    float4 temp_hit = tri.transform * make_float4(hitPt, 1);
+    hitPt = make_float3(temp_hit / (float) temp_hit.w);
+
+    // compute reflection ray direction
+    float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, hitPtNormal) * hitPtNormal);
 
     // Report intersection (material programs will handle the rest)
     if (rtPotentialIntersection(t))
@@ -97,6 +108,7 @@ RT_PROGRAM void intersect(int primIndex)
         // to calculate payload.radiance in closestHit()
         payload.hitPoint = hitPt;
         payload.hitPointNormal = hitPtNormal;
+        payload.dir = reflectionDir;
 
         rtReportIntersection(0);
     }

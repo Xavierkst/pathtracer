@@ -25,6 +25,7 @@ rtDeclareVariable(float3, W, , );
 rtDeclareVariable(float, fovy, , );
 rtDeclareVariable(int, width, , );
 rtDeclareVariable(int, height, , );
+rtDeclareVariable(int, depth, , );
 
 //rtPrintf("%d", resultBuffer.size());
 
@@ -34,20 +35,31 @@ RT_PROGRAM void generateRays()
     // TODO: calculate the ray direction (change the following lines)
     float3 origin = eye;  // origin should be pos of camera
     float aspectRatio = (float) width / (float)height;
-    float alpha = (1.0f - (2.0f * ((float)launchIndex.x + 0.5f) / (float)width)) * tan(fovy / 2.0f)* aspectRatio;
+    float alpha = ((2.0f * ((float)launchIndex.x + 0.5f) / (float)width) - 1.0f) * tan(fovy / 2.0f) * aspectRatio;
     float beta = ((2.0f * ((float)launchIndex.y + 0.5f) / (float)height) - 1.0f) * tan(fovy / 2.0f);
-    //rtPrintf("alpha beta: %f %f", alpha, beta);
-    //rtPrintf("TAN FOVX: %f", tan(fovy / 2.0f) * aspectRatio);
+
     float3 dir = normalize(alpha * U + beta * V - W);
 
     float epsilon = 0.001f; 
-
+    Payload payload;
+    payload.depth = depth;
     // TODO: modify the following lines if you need
     // Shoot a ray to compute the color of the current pixel
-    Ray ray = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
-    Payload payload;
-    rtTrace(root, ray, payload);
+    //Ray ray = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
+    //rtTrace(root, ray, payload);
+    //result = payload.radiance;
+
+
+    do {
+        Ray ray = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
+        rtTrace(root, ray, payload);
+        result += payload.radiance;
+        // set up for next ray cast
+        origin = payload.hitPoint; 
+        dir = payload.dir;
+        //--payload.depth;
+    } while (!payload.done && payload.depth > 0);
 
     // Write the result
-    resultBuffer[launchIndex] = payload.radiance;
+    resultBuffer[launchIndex] = result;
 }

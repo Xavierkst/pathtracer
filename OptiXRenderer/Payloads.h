@@ -12,8 +12,10 @@ struct Payload
     optix::float3 radiance;
     bool done;
     // TODO: add more variable to payload if you need to
-    optix::float3 hitPoint;
+    optix::float3 hitPoint; // our origin for secondary rays
     optix::float3 hitPointNormal;
+    optix::float3 dir;
+    int depth;
 };
 
 struct ShadowPayload
