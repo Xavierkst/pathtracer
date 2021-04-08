@@ -17,6 +17,17 @@ struct Attributes
     optix::float3 ambient;
 };
 
+struct intersectionData {
+
+    optix::float3 hitPoint; // our origin for secondary rays
+    optix::float3 hitPointNormal; // normal at the intersection pt
+    optix::float3 reflectDir; // reflection ray direction
+    optix::float3 rayDir; // reflection ray direction
+    optix::float3 rayOrig; // reflection ray direction
+    
+};
+
+
 /**
  * Structures describing different geometries should be defined here.
  */
@@ -53,8 +64,6 @@ struct Triangle
 
         // calculate normal: (prob leave it in intersection test
         // for GPU to calculate
-        
-        
         attributes.ambient = amb;
         attributes.shininess = shine;
         attributes.diffuse = diff;

@@ -11,15 +11,18 @@ rtDeclareVariable(Ray, ray, rtCurrentRay, );
 
 // Attributes to be passed to material programs 
 rtDeclareVariable(Attributes, attrib, attribute attrib, );
+rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
 
 // Transfer values into payload variable for color calc in closestHit()
 rtDeclareVariable(Payload, payload, rtPayload, );
+//rtDeclareVariable(ShadowPayload, shadowPayload, rtPayload, );
 
 RT_PROGRAM void intersect(int primIndex)
 {
     // Find the intersection of the current ray and triangle
     Triangle tri = triangles[primIndex];
     float t;
+    float epsilon = 0.001f;
 
     // TODO: implement triangle intersection test here
     
@@ -37,6 +40,8 @@ RT_PROGRAM void intersect(int primIndex)
     //ray_orig = make_float3(ray)
     float3 ray_dir = normalize(make_float3(tri.transform.inverse() * make_float4(ray.direction, 0)));
 
+    //float3 ray_orig = ray.origin;
+    //float3 ray_dir = normalize(ray.direction);
     // find parametric dist t: 
     //t = (dot(tri.vertices[0], N) - dot(ray.origin, N)) / dot(ray.direction, N);
     t = (dot(tri.vertices[0], N) - dot(ray_orig, N)) / dot(ray_dir, N);
@@ -50,8 +55,7 @@ RT_PROGRAM void intersect(int primIndex)
     // we know hit point is outside of triangle if dot product of 
     // Normal and orthogonal vect is < 0
     // Note: tri is ACW 
-    float epsilon = 0.001f;
-    float3 hitPt = ray_orig + t * ray_dir + N*epsilon; // account for shadow acne: 
+    float3 hitPt = ray_orig + t * ray_dir /*+ N*epsilon*/; // account for shadow acne: 
     
     float3 orthogEdge;
     // check 1 (total 3 edges to check) 
@@ -85,17 +89,22 @@ RT_PROGRAM void intersect(int primIndex)
     // find normal at hitPoint, pass into payload
     // Note: the triangle already transformed during parsing
     //float3 hitPt = ray.origin + t * ray.direction; 
-    // cross prod of any 2 edges from above
+     //cross prod of any 2 edges from above
+
 
     // transform normal to worldspace
     float3 hitPtNormal = normalize(make_float3((
         tri.transform.inverse()).transpose() * make_float4(N, 0)));
     // transform hit point to worldspace
     float4 temp_hit = tri.transform * make_float4(hitPt, 1);
-    hitPt = make_float3(temp_hit / (float) temp_hit.w);
+    hitPt = make_float3(temp_hit / (float) temp_hit.w) /*+ epsilon * hitPtNormal*/;
+
+    //// obtain parametric distance to hitPoint in worldspace
+    t = length(hitPt - ray.origin);
 
     // compute reflection ray direction
     float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, hitPtNormal) * hitPtNormal);
+    //float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, N) * N);
 
     // Report intersection (material programs will handle the rest)
     if (rtPotentialIntersection(t))
@@ -103,12 +112,18 @@ RT_PROGRAM void intersect(int primIndex)
         // TODO: assign attribute variables here
         // Pass attributes: i.e. materials of the object
         attrib = tri.attributes;
-
+        intersectData.hitPoint = hitPt;
+        intersectData.hitPointNormal = /*hitPtNormal*/N;
+        intersectData.reflectDir = reflectionDir;
+        intersectData.rayDir = ray.direction;
+        intersectData.rayOrig = ray.origin;
         // Pass hitPt and normal at hitPt into payload 
         // to calculate payload.radiance in closestHit()
-        payload.hitPoint = hitPt;
-        payload.hitPointNormal = hitPtNormal;
-        payload.dir = reflectionDir;
+        //payload.hitPoint = hitPt;
+        //payload.hitPointNormal = hitPtNormal;
+        //payload.dir = reflectionDir;
+
+        //shadowPayload.isVisible = true;
 
         rtReportIntersection(0);
     }
@@ -118,11 +133,50 @@ RT_PROGRAM void bound(int primIndex, float result[6])
 {
     Triangle tri = triangles[primIndex];
 
-    // TODO: implement triangle bouding box
     result[0] = -1000.f;
     result[1] = -1000.f;
     result[2] = -1000.f;
     result[3] = 1000.f;
     result[4] = 1000.f;
     result[5] = 1000.f;
+
+    // TODO: implement triangle bouding box
+    if (tri.vertices[0].x > result[0]) {
+        result[0] = tri.vertices[0].x;
+    }
+    
+    if (tri.vertices[1].x > result[0]) {
+        result[0] = tri.vertices[1].x;
+    }
+
+    if (tri.vertices[2].x > result[0]) {
+        result[0] = tri.vertices[2].x;
+    }
+
+    // y 
+    if (tri.vertices[0].y > result[0]) {
+        result[0] = tri.vertices[0].y;
+    }
+    
+    if (tri.vertices[1].y > result[0]) {
+        result[0] = tri.vertices[1].y;
+    }
+
+    if (tri.vertices[2].y > result[0]) {
+        result[0] = tri.vertices[2].y;
+    }
+    
+    // z
+    if (tri.vertices[0].z > result[0]) {
+        result[0] = tri.vertices[0].z;
+    }
+    
+    if (tri.vertices[1].z > result[0]) {
+        result[0] = tri.vertices[1].z;
+    }
+
+    if (tri.vertices[2].z > result[0]) {
+        result[0] = tri.vertices[2].z;
+    }
+
 }

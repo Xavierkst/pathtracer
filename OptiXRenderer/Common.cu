@@ -16,6 +16,7 @@ RT_PROGRAM void miss()
     //payload.radiance = make_float3(1, 0, 0);
     payload.radiance = backgroundColor; 
     payload.done = true;
+    //rtPrintf("miss!");
 }
 
 RT_PROGRAM void exception()
@@ -30,6 +31,7 @@ rtDeclareVariable(float1, t, rtIntersectionDistance, );
 
 RT_PROGRAM void anyHit()
 {
+    //rtPrintf("anyHit!");
     shadowPayload.isVisible = false;
     rtTerminateRay();
 }

@@ -29,6 +29,8 @@ rtDeclareVariable(int, depth, , );
 
 //rtPrintf("%d", resultBuffer.size());
 
+rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
+
 RT_PROGRAM void generateRays()
 {
     float3 result = make_float3(0.f);
@@ -49,16 +51,15 @@ RT_PROGRAM void generateRays()
     //rtTrace(root, ray, payload);
     //result = payload.radiance;
 
-
-    do {
+    //do {
         Ray ray = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
         rtTrace(root, ray, payload);
-        result += payload.radiance;
+        result = payload.radiance;
         // set up for next ray cast
-        origin = payload.hitPoint; 
-        dir = payload.dir;
+        //origin = payload.hitPoint; 
+        //dir = payload.dir;
         //--payload.depth;
-    } while (!payload.done && payload.depth > 0);
+    //} while (!payload.done && payload.depth > 0);
 
     // Write the result
     resultBuffer[launchIndex] = result;

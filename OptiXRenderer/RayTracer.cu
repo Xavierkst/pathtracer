@@ -19,9 +19,11 @@ rtDeclareVariable(rtObject, root, , );
 
 // Declare attibutes 
 rtDeclareVariable(Attributes, attrib, attribute attrib, );
-rtDeclareVariable(ShadowPayload, shadowPayload, rtPayload, );
+rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
+//rtDeclareVariable(ShadowPayload, shadowPayload, rtPayload, );
 rtDeclareVariable(float1, t, rtIntersectionDistance, );
 rtDeclareVariable(float3, eye, , );
+
 
 RT_PROGRAM void closestHit()
 {
@@ -34,34 +36,58 @@ RT_PROGRAM void closestHit()
     // QUESTION: is the HALF-ANGLE: H = normalize(L + V), where L is the direction from hitpoint to light, and V is dir from hitPt to eye?
     for (int i = 0; i < plights.size(); i++) {
         //cast shadow ray
-    	//float distToLight = length(plights[i].light_pos - payload.hitPoint);
-    	//Ray shadowRay = make_Ray(payload.hitPoint, payload.dir, 1, epsilon, distToLight);
-    	//rtTrace(root, shadowRay, shadowPayload); 
+        float3 lightVec = (plights[i].light_pos - intersectData.hitPoint);
+        float distToLight = length(lightVec);
+        lightVec = normalize(lightVec);
 
-        float3 half_angle = normalize((plights[i].light_pos - payload.hitPoint) + (eye - payload.hitPoint));
+        // create shadow ray and cast it
+    	Ray shadowRay = make_Ray(intersectData.hitPoint, lightVec, 1, epsilon, distToLight);
+        ShadowPayload shadowPayload; 
+        shadowPayload.isVisible = true;
+    	rtTrace(root, shadowRay, shadowPayload); 
 
-        result += /*shadowPayload.isVisible * */plights[i].light_color /
-            (plights[i].attenuation.constant + plights[i].attenuation.linear +
-                plights[i].attenuation.quadratic) * (attrib.diffuse * fmaxf(dot(payload.hitPointNormal,
-                    normalize(plights[i].light_pos - payload.hitPoint)), .0f) +
-                    attrib.specular * powf(fmaxf(dot(payload.hitPointNormal, half_angle), .0f),
-                        attrib.shininess));
+        //rtPrintf("%d", shadowPayload.isVisible);
+
+        float3 half_angle = normalize(lightVec + normalize(intersectData.rayOrig - intersectData.hitPoint));
+        //float3 half_angle = normalize((-intersectData.rayDir) + (eye - intersectData.hitPoint));
+
+        if (shadowPayload.isVisible) {
+            //result = (half_angle);
+            result += (plights[i].light_color /
+                (plights[i].attenuation.constant + plights[i].attenuation.linear * distToLight +
+                    plights[i].attenuation.quadratic * powf(distToLight, 2.0f))) * 
+                (attrib.diffuse * fmaxf(dot(intersectData.hitPointNormal,
+                        normalize(lightVec)), .0f) +
+                        attrib.specular * powf(fmaxf(dot( intersectData.hitPointNormal, half_angle), .0f),
+                            attrib.shininess));
+        }
     }
+
     for (int i = 0; i < dlights.size(); i++) {
         //cast shadow ray
-    	/*float distToLight = RT_DEFAULT_MAX;
-    	Ray shadowRay = make_Ray(payload.hitPoint, payload.dir, 1, epsilon, distToLight);
+    	float distToLight = RT_DEFAULT_MAX;
+    	Ray shadowRay = make_Ray(intersectData.hitPoint, -dlights[i].light_dir, 1, epsilon, distToLight);
+        ShadowPayload shadowPayload; 
+        shadowPayload.isVisible = true;
     	rtTrace(root, shadowRay, shadowPayload); 
-*/
-        float3 half_angle = normalize(-dlights[i].light_dir + (eye - payload.hitPoint));
 
-        result += /*shadowPayload.isVisible * */dlights[i].light_color / 
-            (dlights[i].attenuation.constant + dlights[i].attenuation.linear +
-                dlights[i].attenuation.quadratic) * (attrib.diffuse * fmaxf(
-                    dot(payload.hitPointNormal, normalize(-dlights[i].light_dir)), .0f) +
-                    attrib.specular * powf(fmaxf(dot(payload.hitPointNormal, half_angle), .0f), 
-                        attrib.shininess));
+        float3 half_angle = normalize(normalize(-dlights[i].light_dir) + (intersectData.rayOrig - intersectData.hitPoint));
+        //float3 half_angle = normalize(-intersectData.rayDir + (eye - intersectData.hitPoint));
+        if (shadowPayload.isVisible) {
+            result += (dlights[i].light_color /
+                (dlights[i].attenuation.constant + dlights[i].attenuation.linear +
+                    dlights[i].attenuation.quadratic)) * (attrib.diffuse * fmaxf(
+                        dot(intersectData.hitPointNormal, normalize(-dlights[i].light_dir)), .0f) +
+                        attrib.specular * powf(fmaxf(dot(intersectData.hitPointNormal, half_angle), .0f),
+                            attrib.shininess));
+        }
     }
-    --payload.depth;
+
+    //--payload.depth;
+    //if (payload.depth > 0) {
+    //    Ray ray = make_Ray(payload.hitPoint, payload.hitPointNormal, 0, epsilon, RT_DEFAULT_MAX);
+    //    rtTrace(root, ray, payload);
+    //}
+
     payload.radiance = result;
 }

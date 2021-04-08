@@ -153,7 +153,7 @@ void Renderer::buildScene()
     programs["rayGen"]["height"]->setInt(height);
     programs["rayGen"]["depth"]->setInt(scene->depth);
 
-    // Create buffers and pass them to Optix programs that the buffers
+    // Create buffers and pass them to Optix programs
     Buffer triBuffer = createBuffer(scene->triangles);
     programs["triInt"]["triangles"]->set(triBuffer);
     programs["triBound"]["triangles"]->set(triBuffer);
