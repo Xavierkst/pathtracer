@@ -103,7 +103,7 @@ RT_PROGRAM void intersect(int primIndex)
     t = length(hitPt - ray.origin);
 
     // compute reflection ray direction
-    float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, hitPtNormal) * hitPtNormal);
+    float3 reflectionDir = normalize(ray.direction - (2.0f * dot(ray.direction, hitPtNormal) * hitPtNormal));
     //float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, N) * N);
 
     // Report intersection (material programs will handle the rest)

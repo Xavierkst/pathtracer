@@ -29,7 +29,7 @@ rtDeclareVariable(int, depth, , );
 
 //rtPrintf("%d", resultBuffer.size());
 
-rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
+//rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
 
 RT_PROGRAM void generateRays()
 {
@@ -44,6 +44,7 @@ RT_PROGRAM void generateRays()
 
     float epsilon = 0.001f; 
     Payload payload;
+    payload.done = false;
     payload.depth = depth;
     // TODO: modify the following lines if you need
     // Shoot a ray to compute the color of the current pixel
@@ -51,16 +52,26 @@ RT_PROGRAM void generateRays()
     //rtTrace(root, ray, payload);
     //result = payload.radiance;
 
-    //do {
+    do {
+
         Ray ray = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
         rtTrace(root, ray, payload);
-        result = payload.radiance;
-        // set up for next ray cast
-        //origin = payload.hitPoint; 
-        //dir = payload.dir;
-        //--payload.depth;
-    //} while (!payload.done && payload.depth > 0);
+        //result += make_float3(result.x * payload.radiance.x, result.y * payload.radiance.y, result.z * payload.radiance.z);
+        if (payload.depth == depth) {
+            result = payload.radiance;
+        }
+        else result += payload.radiance;
+         //set up for next ray cast
+        origin = payload.rayOrigin; 
+        dir = payload.rayDir;
+        //rtPrintf("%f, %f, %f and %f %f %f \n", payload.rayOrigin.x, payload.rayOrigin.y, payload.rayOrigin.z, temp_origin.x, temp_origin.y, temp_origin.z);
+        /*if (payload.depth == 3) {
+            rtPrintf("%d", payload.depth);
+        }*/
+
+    } while (!payload.done && (payload.depth > 0));
 
     // Write the result
     resultBuffer[launchIndex] = result;
+    //resultBuffer[launchIndex] = make_float3(.0f, .0f, .0f);
 }

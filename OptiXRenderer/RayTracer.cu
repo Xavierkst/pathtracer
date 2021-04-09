@@ -23,7 +23,8 @@ rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
 //rtDeclareVariable(ShadowPayload, shadowPayload, rtPayload, );
 rtDeclareVariable(float1, t, rtIntersectionDistance, );
 rtDeclareVariable(float3, eye, , );
-
+// depth from Renderer.cpp
+rtDeclareVariable(int, depth, , );
 
 RT_PROGRAM void closestHit()
 {
@@ -75,19 +76,31 @@ RT_PROGRAM void closestHit()
         //float3 half_angle = normalize(-intersectData.rayDir + (eye - intersectData.hitPoint));
         if (shadowPayload.isVisible) {
             result += (dlights[i].light_color /
-                (dlights[i].attenuation.constant + dlights[i].attenuation.linear +
-                    dlights[i].attenuation.quadratic)) * (attrib.diffuse * fmaxf(
+                (dlights[i].attenuation.constant + dlights[i].attenuation.linear /** distToLight*/ +
+                    dlights[i].attenuation.quadratic /** powf(distToLight, 2.0f)*/)) * (attrib.diffuse * fmaxf(
                         dot(intersectData.hitPointNormal, normalize(-dlights[i].light_dir)), .0f) +
                         attrib.specular * powf(fmaxf(dot(intersectData.hitPointNormal, half_angle), .0f),
                             attrib.shininess));
         }
     }
 
-    //--payload.depth;
-    //if (payload.depth > 0) {
-    //    Ray ray = make_Ray(payload.hitPoint, payload.hitPointNormal, 0, epsilon, RT_DEFAULT_MAX);
-    //    rtTrace(root, ray, payload);
-    //}
+    // pass the new ray dir and reflection dir into payload 
+    // to be used in rayGeneration do-While loop: 
+    payload.rayOrigin = intersectData.hitPoint /*+ epsilon * intersectData.hitPointNormal*/;
+    payload.rayDir = intersectData.reflectDir;
 
-    payload.radiance = result;
+    if (payload.depth == depth) {
+        payload.radiance = result;
+        payload.spec = attrib.specular;
+    }
+    //else payload.radiance = pow(attrib.specular, (depth - (payload.depth + 1)));
+    else {
+        //float specularExp = depth - (payload.depth + 1); 
+        //payload.radiance = make_float3(powf(attrib.specular.x, specularExp), 
+        //    powf(attrib.specular.y, specularExp),
+        //    powf(attrib.specular.z, specularExp))  * result;
+        payload.radiance = result;
+        payload.spec *= attrib.specular;
+    }
+    --payload.depth;
 }

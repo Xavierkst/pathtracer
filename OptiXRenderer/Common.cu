@@ -8,6 +8,8 @@ using namespace optix;
 rtDeclareVariable(Payload, payload, rtPayload, );
 rtDeclareVariable(float3, backgroundColor, , );
 
+rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
+
 RT_PROGRAM void miss()
 {
     // Set the result to be the background color if miss
@@ -17,6 +19,7 @@ RT_PROGRAM void miss()
     payload.radiance = backgroundColor; 
     payload.done = true;
     //rtPrintf("miss!");
+    //intersectData.hitPoint = 
 }
 
 RT_PROGRAM void exception()

@@ -91,8 +91,8 @@ RT_PROGRAM void intersect(int primIndex)
 
     // compute reflection ray direction in world space
     //float3 reflectionDir = normalize(ray_dir - 2.0f * dot(ray_dir, hitPtNormal) * hitPtNormal);
-    float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, hitPtNormal) * hitPtNormal);
-
+    float3 reflectionDir = normalize(ray.direction - (2.0f * dot( ray.direction, hitPtNormal) * hitPtNormal));
+    //rtPrintf("%f, %f, %f", reflectionDir.x, reflectionDir.y, reflectionDir.z);
     // Report intersection (material programs will handle the rest)
     if (rtPotentialIntersection(t))
     {
