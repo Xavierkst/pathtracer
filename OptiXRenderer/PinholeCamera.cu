@@ -51,11 +51,13 @@ RT_PROGRAM void generateRays()
     //Ray ray = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
     //rtTrace(root, ray, payload);
     //result = payload.radiance;
+    //Ray ray = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
+    //rtTrace(root, ray, payload);
 
     do {
 
-        Ray ray = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
-        rtTrace(root, ray, payload);
+        Ray ray2 = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
+        rtTrace(root, ray2, payload);
         //result += make_float3(result.x * payload.radiance.x, result.y * payload.radiance.y, result.z * payload.radiance.z);
         if (payload.depth == depth) {
             result = payload.radiance;

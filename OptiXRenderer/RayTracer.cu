@@ -99,7 +99,7 @@ RT_PROGRAM void closestHit()
         //payload.radiance = make_float3(powf(attrib.specular.x, specularExp), 
         //    powf(attrib.specular.y, specularExp),
         //    powf(attrib.specular.z, specularExp))  * result;
-        payload.radiance = result;
+        payload.radiance = payload.spec * result;
         payload.spec *= attrib.specular;
     }
     --payload.depth;
