@@ -174,12 +174,12 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
 
         else if (cmd == "tri" && readValues(s, 3, ivalues)) {
             Triangle push_tri(
-                //transformPoint(scene->vertices[ivalues[0]]),
-                //transformPoint(scene->vertices[ivalues[1]]),
-                //transformPoint(scene->vertices[ivalues[2]]),
-                scene->vertices[ivalues[0]],
-                scene->vertices[ivalues[1]],
-                scene->vertices[ivalues[2]],
+                transformPoint(scene->vertices[ivalues[0]]),
+                transformPoint(scene->vertices[ivalues[1]]),
+                transformPoint(scene->vertices[ivalues[2]]),
+                //scene->vertices[ivalues[0]],
+                //scene->vertices[ivalues[1]],
+                //scene->vertices[ivalues[2]],
                 ambient, shininess, diffuse,
                 specular, emission);
             push_tri.transform = transStack.top();

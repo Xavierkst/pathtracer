@@ -143,7 +143,7 @@ void Renderer::buildScene()
     material->setAnyHitProgram(1, programs["shadowCaster"]);
 
     // TODO: pass data to programs here
-    // Camera variables
+    // Camera variables into rayGeneration program
     programs["rayGen"]["eye"]->setFloat(cam.pos);
     programs["rayGen"]["U"]->setFloat(cam.u);
     programs["rayGen"]["V"]->setFloat(cam.v);
@@ -152,6 +152,10 @@ void Renderer::buildScene()
     programs["rayGen"]["width"]->setInt(width);
     programs["rayGen"]["height"]->setInt(height);
     programs["rayGen"]["depth"]->setInt(scene->depth);
+
+
+    // variables sent into closestHit program 
+    programs["integrator"]["depth"]->setInt(scene->depth);
 
     // Create buffers and pass them to Optix programs
     Buffer triBuffer = createBuffer(scene->triangles);
@@ -192,17 +196,20 @@ void Renderer::buildScene()
     sphereGI->setMaterial(0, material);
 
     GeometryGroup GG = context->createGeometryGroup();
-    GG->setAcceleration(context->createAcceleration("NoAccel"));
+    //GG->setAcceleration(context->createAcceleration("NoAccel"));
+    GG->setAcceleration(context->createAcceleration("Trbvh"));
     GG->setChildCount(1);
     GG->setChild(0, sphereGI);
 
     GeometryGroup triGG = context->createGeometryGroup();
-    triGG->setAcceleration(context->createAcceleration("NoAccel"));
+    //triGG->setAcceleration(context->createAcceleration("NoAccel"));
+    triGG->setAcceleration(context->createAcceleration("Trbvh"));
     triGG->setChildCount(1);
     triGG->setChild(0, triGI);
 
     Group root = context->createGroup();
-    root->setAcceleration(context->createAcceleration("NoAccel"));
+    //root->setAcceleration(context->createAcceleration("NoAccel"));
+    root->setAcceleration(context->createAcceleration("Trbvh"));
     root->setChildCount(2);
     root->setChild(0, triGG);
     root->setChild(1, GG);
