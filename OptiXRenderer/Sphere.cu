@@ -100,6 +100,7 @@ RT_PROGRAM void intersect(int primIndex)
         // TODO: assign attribute variables here
         // Pass attributes
         attrib = sphere.attributes;       
+        //rtPrintf("sphere spec: %f %f %f\n", attrib.specular.x, attrib.specular.y, attrib.specular.z);
         intersectData.hitPoint = hitPt;
         
         intersectData.hitPointNormal = hitPtNormal;

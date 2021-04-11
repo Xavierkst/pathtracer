@@ -35,16 +35,18 @@ RT_PROGRAM void intersect(int primIndex)
     // triangles don't need to worry about transforming
     // ray by M-1 since it is still a triangle (but for spheres, 
     // must consider)
-    float4 temp_ray = tri.transform.inverse() * make_float4(ray.origin, 1);
-    float3 ray_orig = make_float3(temp_ray / (float)temp_ray.w);
-    //ray_orig = make_float3(ray)
-    float3 ray_dir = normalize(make_float3(tri.transform.inverse() * make_float4(ray.direction, 0)));
+    //float4 temp_ray = tri.transform.inverse() * make_float4(ray.origin, 1);
+    //float3 ray_orig = make_float3(temp_ray / (float)temp_ray.w);
+    ////ray_orig = make_float3(ray)
+    //float3 ray_dir = normalize(make_float3(tri.transform.inverse() * make_float4(ray.direction, 0)));
 
-    //float3 ray_orig = ray.origin;
-    //float3 ray_dir = normalize(ray.direction);
+    float3 ray_orig = ray.origin;
+    float3 ray_dir = normalize(ray.direction);
     // find parametric dist t: 
     //t = (dot(tri.vertices[0], N) - dot(ray.origin, N)) / dot(ray.direction, N);
-    t = (dot(tri.vertices[0], N) - dot(ray_orig, N)) / dot(ray_dir, N);
+    float parallel = dot(ray_dir, N);
+    if (parallel == .0f) return; 
+    t = (dot(tri.vertices[0], N) - dot(ray_orig, N)) / parallel;
     if (t < 0) {
         // triangle is not positive distance to ray, i.e. behind
         return; 
@@ -93,11 +95,13 @@ RT_PROGRAM void intersect(int primIndex)
 
 
     // transform normal to worldspace
-    float3 hitPtNormal = normalize(make_float3((
-        tri.transform.inverse()).transpose() * make_float4(N, 0)));
+    //float3 hitPtNormal = normalize(make_float3((
+    //    tri.transform.inverse()).transpose() * make_float4(N, 0)));
+    float3 hitPtNormal = make_float3(tri.transform * make_float4(N, 0)); 
+
     // transform hit point to worldspace
-    float4 temp_hit = tri.transform * make_float4(hitPt, 1);
-    hitPt = make_float3(temp_hit / (float) temp_hit.w) /*+ epsilon * hitPtNormal*/;
+    //float4 temp_hit = tri.transform * make_float4(hitPt, 1);
+    //hitPt = make_float3(temp_hit / (float) temp_hit.w) /*+ epsilon * hitPtNormal*/;
 
     //// obtain parametric distance to hitPoint in worldspace
     t = length(hitPt - ray.origin);
@@ -141,42 +145,37 @@ RT_PROGRAM void bound(int primIndex, float result[6])
     result[5] = 1000.f;
 
     // TODO: implement triangle bouding box
-    if (tri.vertices[0].x > result[0]) {
-        result[0] = tri.vertices[0].x;
-    }
     
-    if (tri.vertices[1].x > result[0]) {
-        result[0] = tri.vertices[1].x;
-    }
-
-    if (tri.vertices[2].x > result[0]) {
-        result[0] = tri.vertices[2].x;
-    }
-
-    // y 
-    if (tri.vertices[0].y > result[0]) {
-        result[0] = tri.vertices[0].y;
-    }
+    // find the x, y, and z max and mins:
+    float xMax, yMax, zMax, xMin, yMin, zMin;
     
-    if (tri.vertices[1].y > result[0]) {
-        result[0] = tri.vertices[1].y;
-    }
+    float tri0x = tri.vertices[0].x;
+    float tri1x = tri.vertices[1].x;
+    float tri2x = tri.vertices[2].x;
 
-    if (tri.vertices[2].y > result[0]) {
-        result[0] = tri.vertices[2].y;
-    }
-    
-    // z
-    if (tri.vertices[0].z > result[0]) {
-        result[0] = tri.vertices[0].z;
-    }
-    
-    if (tri.vertices[1].z > result[0]) {
-        result[0] = tri.vertices[1].z;
-    }
+    float tri0y = tri.vertices[0].y;
+    float tri1y = tri.vertices[1].y;
+    float tri2y = tri.vertices[2].y;
 
-    if (tri.vertices[2].z > result[0]) {
-        result[0] = tri.vertices[2].z;
-    }
+    float tri0z = tri.vertices[0].z;
+    float tri1z = tri.vertices[1].z;
+    float tri2z = tri.vertices[2].z;
 
+    // if tri0x > tri1x, we test if tri0x also greater than tri2x, if so, tri0x is greatest
+    // else tri1x > tri0x, we test if tri1x also greater than tri2x, if so, tri1x greatest, 
+    // else tri2x greatest. Rinse and repeat for all Min and Max
+    xMax = (tri0x > tri1x) ? ((tri0x > tri2x) ? tri0x : tri2x) : ((tri1x > tri2x) ? tri1x : tri2x);
+    yMax = (tri0y > tri1y) ? ((tri0y > tri2y) ? tri0y : tri2y) : ((tri1y > tri2y) ? tri1y : tri2y);
+    zMax = (tri0z > tri1z) ? ((tri0z > tri2z) ? tri0z : tri2z) : ((tri1z > tri2z) ? tri1z : tri2z);
+
+    xMin = (tri0x < tri1x) ? ((tri0x < tri2x) ? tri0x : tri2x) : ((tri1x < tri2x) ? tri1x : tri2x);
+    yMin = (tri0y < tri1y) ? ((tri0y < tri2y) ? tri0y : tri2y) : ((tri1y < tri2y) ? tri1y : tri2y);
+    zMin = (tri0z < tri1z) ? ((tri0z < tri2z) ? tri0z : tri2z) : ((tri1z < tri2z) ? tri1z : tri2z);
+
+    result[0] = xMin;
+    result[1] = yMin;
+    result[2] = zMin;
+    result[3] = xMax;
+    result[4] = yMax;
+    result[5] = zMax;
 }
