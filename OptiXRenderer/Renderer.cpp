@@ -152,10 +152,9 @@ void Renderer::buildScene()
     programs["rayGen"]["width"]->setInt(width);
     programs["rayGen"]["height"]->setInt(height);
     programs["rayGen"]["depth"]->setInt(scene->depth);
-
-
-    // variables sent into closestHit program 
+    // variables into closestHit program 
     programs["integrator"]["depth"]->setInt(scene->depth);
+
 
     // Create buffers and pass them to Optix programs
     Buffer triBuffer = createBuffer(scene->triangles);

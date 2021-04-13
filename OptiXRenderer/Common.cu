@@ -29,7 +29,6 @@ rtDeclareVariable(float1, t, rtIntersectionDistance, );
 
 RT_PROGRAM void anyHit()
 {
-    //rtPrintf("anyHit!");
     shadowPayload.isVisible = false;
     rtTerminateRay();
 }

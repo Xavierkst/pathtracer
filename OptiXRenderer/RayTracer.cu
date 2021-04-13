@@ -20,21 +20,15 @@ rtDeclareVariable(rtObject, root, , );
 // Declare attibutes 
 rtDeclareVariable(Attributes, attrib, attribute attrib, );
 rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
-//rtDeclareVariable(ShadowPayload, shadowPayload, rtPayload, );
 rtDeclareVariable(float1, t, rtIntersectionDistance, );
-//rtDeclareVariable(float3, eye, , );
-// depth from Renderer.cpp
-rtDeclareVariable(int, depth, , );
+rtDeclareVariable(int, depth, , ); // depth from Renderer.cpp
 
 RT_PROGRAM void closestHit()
 {
-    //rtPrintf("radiance: %f %f %f\n", payload.radiance.x, payload.radiance.y, payload.radiance.z);
     // TODO: calculate the color using the Blinn-Phong reflection model
     float epsilon = .001f;
     float3 result = attrib.ambient + attrib.emission;
-    //printf("%f, %f, %f\n", attrib.ambient.x, attrib.ambient.y, attrib.ambient.z);
      
-    // QUESTION: is the HALF-ANGLE: H = normalize(L + V), where L is the direction from hitpoint to light, and V is dir from hitPt to eye?
     for (int i = 0; i < plights.size(); i++) {
         //cast shadow ray
         float3 lightVec = (plights[i].light_pos - intersectData.hitPoint);
@@ -48,9 +42,11 @@ RT_PROGRAM void closestHit()
         shadowPayload.isVisible = true;
     	rtTrace(root, shadowRay, shadowPayload); 
 
+        // half angle = normalize of L + V, L (hitPt to light), 
+        // V (view dir, eye / prev hitPt to hitPt)
         float3 half_angle = normalize(lightVec + normalize(intersectData.rayOrig - intersectData.hitPoint));
-        //float3 half_angle = normalize((-intersectData.rayDir) + (eye - intersectData.hitPoint));
 
+        // compute blinn-phong
         if (shadowPayload.isVisible) {
             //result = (half_angle);
             result += (plights[i].light_color /
@@ -67,36 +63,36 @@ RT_PROGRAM void closestHit()
         //cast shadow ray
     	float distToLight = RT_DEFAULT_MAX;
         float3 shadowRayOrigin = intersectData.hitPoint + intersectData.hitPointNormal * epsilon;
-    	Ray shadowRay = make_Ray(shadowRayOrigin, normalize(-dlights[i].light_dir), 1, epsilon, distToLight);
+    	Ray shadowRay = make_Ray(shadowRayOrigin, normalize(dlights[i].light_dir), 1, epsilon, distToLight);
     	//Ray shadowRay = make_Ray(intersectData.hitPoint, -dlights[i].light_dir, 1, epsilon, distToLight);
         ShadowPayload shadowPayload; 
         shadowPayload.isVisible = true;
     	rtTrace(root, shadowRay, shadowPayload); 
 
-        float3 half_angle = normalize(normalize(-dlights[i].light_dir) + (intersectData.rayOrig - intersectData.hitPoint));
-        //float3 half_angle = normalize(-intersectData.rayDir + (eye - intersectData.hitPoint));
+        // half angle = normalize of L + V, L (hitPt to light), 
+        float3 half_angle = normalize(normalize(dlights[i].light_dir) + (intersectData.rayOrig - intersectData.hitPoint));
+
+        // compute blinn-phong
         if (shadowPayload.isVisible) {
             result += (dlights[i].light_color * (attrib.diffuse * fmaxf(
-                        dot(intersectData.hitPointNormal, normalize(-dlights[i].light_dir)), .0f) +
+                        dot(intersectData.hitPointNormal, normalize(dlights[i].light_dir)), .0f) +
                         attrib.specular * powf(fmaxf(dot(intersectData.hitPointNormal, half_angle), .0f),
                             attrib.shininess)));
         }
     }
     // pass the new ray dir and reflection dir into payload 
     // to be used in rayGeneration do-While loop: 
-    payload.rayOrigin = intersectData.hitPoint /*+ epsilon * intersectData.hitPointNormal*/;
+    payload.rayOrigin = intersectData.hitPoint + intersectData.hitPointNormal * epsilon;
     payload.rayDir = intersectData.reflectDir;
 
-    //rtPrintf("payload depth: %d and depth: %d\n", payload.depth, depth);
     if (payload.depth == depth) {
         payload.radiance = result;
         payload.spec = attrib.specular;
     }
     else {
-        //rtPrintf("spec: %f %f %f\n", payload.spec.x, payload.spec.y, payload.spec.z);
         payload.radiance = payload.spec * result;
+        // accumulate specular: 
+        // r_1 + S_1 * r2 + S_1 * S_2 * r3 + ...
         payload.spec *= attrib.specular;
     }
-    //rtPrintf("radiance: %f %f %f\n", attrib.specular.x, attrib.specular.y, attrib.specular.z);
-    //--payload.depth;
 }

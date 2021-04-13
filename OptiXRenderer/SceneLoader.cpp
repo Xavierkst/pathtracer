@@ -46,12 +46,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     auto scene = std::make_shared<Scene>();
 
     transStack.push(optix::Matrix4x4::identity());
-    //optix::Matrix4x4 currTransf = transStack.top();
 
     std::string str, cmd;
-
-    //optix::Matrix4x4 transMat = optix::Matrix4x4::translate(optix::make_float3(4.0f, 10.0f, -32.0f));
-    //printf("%f %f %f", transMat[3], transMat[7], transMat[11]);
 
     // save material values to assign to each geometry
     optix::float3 diffuse = optix::make_float3(.0f);
@@ -59,7 +55,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     optix::float3 specular = optix::make_float3(.0f);
     optix::float3 emission = optix::make_float3(.0f);
     float shininess = .0f;
-
     // default attenuation values to save:
     Attenuation atten = Attenuation();
 
@@ -158,8 +153,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
                 ambient, shininess, diffuse, specular, emission);
             temp_sphere.transform = transStack.top();
             scene->spheres.push_back(temp_sphere);
-
-            //printf("%f, %f %f %f", transStack.top()[0], transStack.top()[1], transStack.top()[2], transStack.top()[3]); 
         }
 
         else if (cmd == "vertex" && readValues(s, 3, fvalues)) {
@@ -168,9 +161,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         }
 
         else if (cmd == "vertexnormal" && readValues(s, 6, fvalues)) {
-            // scene->vertexNormals.push_back(std::make_pair(
-            //     optix::make_float3(fvalues[0], fvalues[1], fvalues[2]), 
-            //     optix::make_float3(fvalues[3], fvalues[4], fvalues[5])));
             scene->vertices.push_back(
                 optix::make_float3(fvalues[0], fvalues[1], fvalues[2]));
             scene->normals.push_back(
@@ -178,6 +168,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         }
 
         else if (cmd == "tri" && readValues(s, 3, ivalues)) {
+            // to save the hassle, we use transformed vertices 
+            // for triangles
             Triangle push_tri(
                 transformPoint(scene->vertices[ivalues[0]]),
                 transformPoint(scene->vertices[ivalues[1]]),
@@ -190,7 +182,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             push_tri.transform = transStack.top();
 
             scene->triangles.push_back(push_tri); 
-            //printf("%f, %f %f %f", transStack.top()[0], transStack.top()[1], transStack.top()[2], transStack.top()[3]); 
         }
 
         else if (cmd == "trinormal" && readValues(s, 3, ivalues)) {
@@ -219,13 +210,11 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         }
 
         // method for implementating own transforms
-        // https://forums.developer.nvidia.com/t/applying-transforms-to-geometries/68316/4
+        // Matrices in optix are row-major
         else if (cmd == "translate" && readValues(s, 3, fvalues)) {
             optix::Matrix4x4 transMat = optix::Matrix4x4::identity();
             transMat.setCol(3, optix::make_float4(fvalues[0], fvalues[1], fvalues[2], 1.0f));
             rightMultiply(transMat);
-            //rightMultiply(optix::Matrix4x4::translate(
-                //optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));
         }
 
         else if (cmd == "scale" && readValues(s, 3, fvalues)) {
@@ -235,7 +224,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             scaleMat[10] = fvalues[2];
             rightMultiply(scaleMat);
             //rightMultiply(optix::Matrix4x4::scale(
-                //optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));
+            //    optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));
         }
 
         // All parsed axes of rotation only have 1 axis
@@ -267,10 +256,12 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
                 rotateMat[4] = sinf(theta);
                 rotateMat[5] = cosf(theta);
             }
-            //float angle_radians = (fvalues[3] / 180.0f )* M_PIf;
+
+            float angle_radians = (fvalues[3] / 180.0f )* M_PIf;
             //rightMultiply(optix::Matrix4x4::rotate( angle_radians,
-                //optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));
+            //    optix::make_float3(fvalues[0], fvalues[1], fvalues[2])));
             rightMultiply(rotateMat);
+
         }
     }
 

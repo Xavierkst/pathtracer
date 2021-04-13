@@ -33,10 +33,6 @@ struct intersectionData {
  */
 struct Triangle
 {
-    // TODO: define the triangle structure
-    //int maxverts; 
-    //int maxvertnorms;
-    //optix::float3 normal;
     optix::float3 vertices[3];
     optix::float3 vertNormals[3];
     //int triIndices[3];
@@ -107,12 +103,10 @@ struct Triangle
 
 struct Sphere
 {
-    // TODO: define the sphere structure
     optix::float3 position;
     float radius;
 
     // include Sphere materials here:
-    //optix::float3 ambient;
     Attributes attributes;
 
     // contains the transf -- used to inverse transform
@@ -125,7 +119,6 @@ struct Sphere
         
         position = pos;
         radius = r;
-        //ambient = amb;
 
         attributes.ambient = amb;
         attributes.shininess = shine;

@@ -15,7 +15,6 @@ rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
 
 // Transfer values into payload variable for color calc in closestHit()
 rtDeclareVariable(Payload, payload, rtPayload, );
-//rtDeclareVariable(ShadowPayload, shadowPayload, rtPayload, );
 
 RT_PROGRAM void intersect(int primIndex)
 {
@@ -30,12 +29,13 @@ RT_PROGRAM void intersect(int primIndex)
     // ray by M-1 since it is still a triangle (but for spheres, 
     // must consider)
 
-
-    // get plane normal
+    // get triangle normal
     float3 edge1 = tri.vertices[1] - tri.vertices[0]; 
     float3 edge2 = tri.vertices[2] - tri.vertices[0]; 
     // we have normal of triangle, N
     float3 N = normalize(cross(edge1, edge2)); 
+
+    // If trying to use inverse transf of rays: 
     //float4 temp_ray = tri.transform.inverse() * make_float4(ray.origin, 1);
     //float3 ray_orig = make_float3(temp_ray / (float)temp_ray.w);
     ////ray_orig = make_float3(ray)
@@ -43,8 +43,8 @@ RT_PROGRAM void intersect(int primIndex)
 
     float3 ray_orig = ray.origin;
     float3 ray_dir = normalize(ray.direction);
+
     // find parametric dist t: 
-    //t = (dot(tri.vertices[0], N) - dot(ray.origin, N)) / dot(ray.direction, N);
     float parallel = dot(ray_dir, N);
     if (parallel == .0f) return; 
     t = (dot(tri.vertices[0], N) - dot(ray_orig, N)) / parallel;
@@ -58,14 +58,14 @@ RT_PROGRAM void intersect(int primIndex)
     // we know hit point is outside of triangle if dot product of 
     // Normal and orthogonal vect is < 0
     // Note: triangle vertices are ACW 
-    float3 hitPt = ray_orig + t * ray_dir /*+ N*epsilon*/; // account for shadow acne: 
+    float3 hitPt = ray_orig + t * ray_dir; 
     
     float3 orthogEdge;
     // check 1 (total 3 edges to check) 
     float3 edgeV1V0 = tri.vertices[1] - tri.vertices[0]; 
     float3 edgePV0 = hitPt - tri.vertices[0]; 
     orthogEdge = cross(edgeV1V0, edgePV0); 
-    // calc u, v or w here: 
+    // calc u, v or w here (barycent vals) if needed:  
 
     // check if hitPt inside or outside tri 
     if (dot(N, orthogEdge) < 0)
@@ -77,7 +77,7 @@ RT_PROGRAM void intersect(int primIndex)
     orthogEdge = cross(edgeV2V1, edgePV1);
 
     if (dot(N, orthogEdge) < 0)
-        return; 
+        return; // hitPt outside
 
     // last check: edgeV0V2 and edgePV2
     float3 edgeV0V2 = tri.vertices[0] - tri.vertices[2]; 
@@ -85,7 +85,7 @@ RT_PROGRAM void intersect(int primIndex)
     orthogEdge = cross(edgeV0V2, edgePV2);
 
     if (dot(N, orthogEdge) < 0)
-        return;
+        return; // hitPt outside
 
     // made it here, means the hit point is inside the tri!
 

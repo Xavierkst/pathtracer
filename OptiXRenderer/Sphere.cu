@@ -81,9 +81,9 @@ RT_PROGRAM void intersect(int primIndex)
 
     // transform hitPoint back into worldspace from local space
     float4 temp_pt = sphere.transform * make_float4(hitPt, 1);
-    hitPt = make_float3(temp_pt / (float)temp_pt.w);/*+epsilon * hitPtNormal;*/
+    hitPt = make_float3(temp_pt / (float)temp_pt.w)/* + epsilon * hitPtNormal*/;/*+epsilon * hitPtNormal;*/
 
-        // find distance t:  
+    // find distance t:  
     t = length(hitPt - ray.origin);
     
     // Account for shadow Acne??  
@@ -133,42 +133,53 @@ RT_PROGRAM void bound(int primIndex, float result[6])
     result[4] = 1000.f;
     result[5] = 1000.f;
 
-    //Matrix4x4 S; 
-    //float rad_2 = powf(sphere.radius, 2.0f);
+    //// as explained in: 
+    //// https://tavianator.com/2014/ellipsoid_bounding_boxes.html
+
+    //Matrix4x4 S = Matrix4x4::identity(); 
+    //float rad_2 = (sphere.radius);
     //S.setRow(0, make_float4(rad_2, .0f, .0f, .0f));
     //S.setRow(1, make_float4(.0f, rad_2, .0f, .0f));
-    //S.setRow(2, make_float4(.0f, .0f, rad_2,.0f));
+    //S.setRow(2, make_float4(.0f, .0f, rad_2, .0f));
     //S.setRow(3, make_float4(.0f, .0f, .0f, -1.0f));
+    ////S[0] = rad_2;
+    ////S[5] = rad_2;
+    ////S[10] = rad_2;
+    ////S[15] = -1.0f;
+    //Matrix4x4 M = sphere.transform;
+    //////Matrix4x4 Q = M.inverse().transpose() * S * M.inverse();
+    ////Matrix4x4 M_T = M.transpose();
+    ////Matrix4x4 R = M * S.inverse() * M_T;
+    //////Matrix4x4 R = Q.inverse();
 
-    Matrix4x4 M = sphere.transform;
-    //Matrix4x4 M_T = M.transpose();
-    //Matrix4x4 R = M * S.inverse() * M_T;
+    //////if (R == R.transpose())
+    //////    rtPrintf("same!");
+    //float xMax, xMin, yMax, yMin, zMax, zMin;
 
-    //float
-    //int row = 4;
-    //int col = 4;
-    float xMax, xMin, yMax, yMin, zMax, zMin;
-    //zMax = (R[11] + sqrtf(powf(R[11], 2.0f)) - (R[15] * R[10])) / R[15];
-    //zMin = (R[11] - sqrtf(powf(R[11], 2.0f)) - (R[15] * R[10])) / R[15];
-    //yMax = (R[7] + sqrtf(powf(R[7], 2.0f)) - (R[15] * R[5])) / R[15];
-    //yMin = (R[7] - sqrtf(powf(R[7], 2.0f)) - (R[15] * R[5])) / R[15];
-    //xMax = (R[3] + sqrtf(powf(R[3], 2.0f)) - (R[15] * R[0])) / R[15];
-    //xMin = (R[3] - sqrtf(powf(R[3], 2.0f)) - (R[15] * R[0])) / R[15];
+    //////xMax = (R[3] + sqrtf(powf(R[3], 2.0f) - (R[15] * R[0]))) / (float)R[15];
+    //////xMin = (R[3] - sqrtf(powf(R[3], 2.0f) - (R[15] * R[0]))) / (float)R[15];
+    //////yMax = (R[7] + sqrtf(powf(R[7], 2.0f) - (R[15] * R[5]))) / (float)R[15];
+    //////yMin = (R[7] - sqrtf(powf(R[7], 2.0f) - (R[15] * R[5]))) / (float)R[15];
+    //////zMax = (R[11] + sqrtf(powf(R[11], 2.0f) - (R[10] * R[15]))) / (float)R[15];
+    //////zMin = (R[11] - sqrtf(powf(R[11], 2.0f) - (R[10] * R[15]))) / (float)R[15];
 
-    // as seen on: 
-    // https://tavianator.com/2014/ellipsoid_bounding_boxes.html
-    // we end up only requiring the matrix M in the calculation
-    xMax = M[3] + sqrtf( powf(M[0], 2.0f) + powf(M[1], 2.0f) + powf(M[2], 2.0f));
-    xMin = M[3] - sqrtf( powf(M[0], 2.0f) + powf(M[1], 2.0f) + powf(M[2], 2.0f));
-    yMax = M[7] + sqrtf( powf(M[4], 2.0f) + powf(M[5], 2.0f) + powf(M[6], 2.0f));
-    yMin = M[7] - sqrtf( powf(M[4], 2.0f) + powf(M[5], 2.0f) + powf(M[6], 2.0f));
-    zMax = M[11] + sqrtf( powf(M[8], 2.0f) + powf(M[9], 2.0f) + powf(M[10], 2.0f));
-    zMin = M[11] - sqrtf( powf(M[8], 2.0f) + powf(M[9], 2.0f) + powf(M[10], 2.0f));
+    //// we end up only requiring the matrix M in the calculation
+    //// after plugging R[i][j] into the plane equations, where 
+    //// S is 4x4 mat representing sphere (rad and position), and
+    //// R == Q.inverse == M_T.inverse * S * M.inverse. Hence:
 
-    result[0] = xMin;
-    result[1] = yMin;
-    result[2] = zMin;
-    result[3] = xMax;
-    result[4] = yMax;
-    result[5] = zMax;
+    //// eg. xmin or xmax = M[1][4] +/- sqrt( M[1][1]^2 + M[1][2]^2 + M[1][3]^2 ) 
+    //xMax = M[3] + sqrtf( powf(M[0], 2.0f) + powf(M[1], 2.0f) + powf(M[2], 2.0f));
+    //xMin = M[3] - sqrtf( powf(M[0], 2.0f) + powf(M[1], 2.0f) + powf(M[2], 2.0f));
+    //yMax = M[7] + sqrtf( powf(M[4], 2.0f) + powf(M[5], 2.0f) + powf(M[6], 2.0f));
+    //yMin = M[7] - sqrtf( powf(M[4], 2.0f) + powf(M[5], 2.0f) + powf(M[6], 2.0f));
+    //zMax = M[11] + sqrtf( powf(M[8], 2.0f) + powf(M[9], 2.0f) + powf(M[10], 2.0f));
+    //zMin = M[11] - sqrtf( powf(M[8], 2.0f) + powf(M[9], 2.0f) + powf(M[10], 2.0f));
+
+    //result[0] = xMin;
+    //result[1] = yMin;
+    //result[2] = zMin;
+    //result[3] = xMax;
+    //result[4] = yMax;
+    //result[5] = zMax;
 }
