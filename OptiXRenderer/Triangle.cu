@@ -25,16 +25,17 @@ RT_PROGRAM void intersect(int primIndex)
     float epsilon = 0.001f;
 
     // TODO: implement triangle intersection test here
-    
+
+    // triangles don't need to worry about transforming
+    // ray by M-1 since it is still a triangle (but for spheres, 
+    // must consider)
+
+
     // get plane normal
     float3 edge1 = tri.vertices[1] - tri.vertices[0]; 
     float3 edge2 = tri.vertices[2] - tri.vertices[0]; 
     // we have normal of triangle, N
     float3 N = normalize(cross(edge1, edge2)); 
-
-    // triangles don't need to worry about transforming
-    // ray by M-1 since it is still a triangle (but for spheres, 
-    // must consider)
     //float4 temp_ray = tri.transform.inverse() * make_float4(ray.origin, 1);
     //float3 ray_orig = make_float3(temp_ray / (float)temp_ray.w);
     ////ray_orig = make_float3(ray)
@@ -56,7 +57,7 @@ RT_PROGRAM void intersect(int primIndex)
     // we use cross prod of an edge in the tri and the hit point
     // we know hit point is outside of triangle if dot product of 
     // Normal and orthogonal vect is < 0
-    // Note: tri is ACW 
+    // Note: triangle vertices are ACW 
     float3 hitPt = ray_orig + t * ray_dir /*+ N*epsilon*/; // account for shadow acne: 
     
     float3 orthogEdge;
@@ -93,7 +94,6 @@ RT_PROGRAM void intersect(int primIndex)
     //float3 hitPt = ray.origin + t * ray.direction; 
      //cross prod of any 2 edges from above
 
-
     // transform normal to worldspace
     //float3 hitPtNormal = normalize(make_float3((
     //    tri.transform.inverse()).transpose() * make_float4(N, 0)));
@@ -103,32 +103,25 @@ RT_PROGRAM void intersect(int primIndex)
     //float4 temp_hit = tri.transform * make_float4(hitPt, 1);
     //hitPt = make_float3(temp_hit / (float) temp_hit.w) /*+ epsilon * hitPtNormal*/;
 
-    //// obtain parametric distance to hitPoint in worldspace
+    // obtain parametric distance to hitPoint in worldspace
     t = length(hitPt - ray.origin);
 
     // compute reflection ray direction
-    float3 reflectionDir = normalize(ray.direction - (2.0f * dot(ray.direction, hitPtNormal) * hitPtNormal));
-    //float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, N) * N);
+    //float3 reflectionDir = normalize(ray.direction - (2.0f * dot(ray.direction, hitPtNormal) * hitPtNormal));
+    float3 reflectionDir = normalize(ray.direction - 2.0f * dot(ray.direction, N) * N);
 
     // Report intersection (material programs will handle the rest)
     if (rtPotentialIntersection(t))
     {
         // TODO: assign attribute variables here
         // Pass attributes: i.e. materials of the object
+        // pass the rest as intersection data
         attrib = tri.attributes;
         intersectData.hitPoint = hitPt;
         intersectData.hitPointNormal = /*hitPtNormal*/N;
         intersectData.reflectDir = reflectionDir;
         intersectData.rayDir = ray.direction;
         intersectData.rayOrig = ray.origin;
-        // Pass hitPt and normal at hitPt into payload 
-        // to calculate payload.radiance in closestHit()
-        //payload.hitPoint = hitPt;
-        //payload.hitPointNormal = hitPtNormal;
-        //payload.dir = reflectionDir;
-
-        //shadowPayload.isVisible = true;
-
         rtReportIntersection(0);
     }
 }
@@ -161,16 +154,49 @@ RT_PROGRAM void bound(int primIndex, float result[6])
     float tri1z = tri.vertices[1].z;
     float tri2z = tri.vertices[2].z;
 
+    // Method: Iterate thru all triangle
     // if tri0x > tri1x, we test if tri0x also greater than tri2x, if so, tri0x is greatest
     // else tri1x > tri0x, we test if tri1x also greater than tri2x, if so, tri1x greatest, 
     // else tri2x greatest. Rinse and repeat for all Min and Max
-    xMax = (tri0x > tri1x) ? ((tri0x > tri2x) ? tri0x : tri2x) : ((tri1x > tri2x) ? tri1x : tri2x);
-    yMax = (tri0y > tri1y) ? ((tri0y > tri2y) ? tri0y : tri2y) : ((tri1y > tri2y) ? tri1y : tri2y);
-    zMax = (tri0z > tri1z) ? ((tri0z > tri2z) ? tri0z : tri2z) : ((tri1z > tri2z) ? tri1z : tri2z);
+    xMax = tri0x; yMax = tri0y; zMax = tri0z;
+    xMin = tri0x; yMin = tri0y; zMin = tri0z;
+    if (tri1x > xMax)
+        xMax = tri1x;
+    if (tri2x > xMax)
+        xMax = tri2x;
+    
+    if (tri1y > yMax)
+        yMax = tri1y;
+    if (tri2y > yMax)
+        yMax = tri2y;
 
-    xMin = (tri0x < tri1x) ? ((tri0x < tri2x) ? tri0x : tri2x) : ((tri1x < tri2x) ? tri1x : tri2x);
-    yMin = (tri0y < tri1y) ? ((tri0y < tri2y) ? tri0y : tri2y) : ((tri1y < tri2y) ? tri1y : tri2y);
-    zMin = (tri0z < tri1z) ? ((tri0z < tri2z) ? tri0z : tri2z) : ((tri1z < tri2z) ? tri1z : tri2z);
+    if (tri1z > zMax)
+        zMax = tri1z;
+    if (tri2z > zMax)
+        zMax = tri2z;
+
+    if (tri1x < xMin)
+        xMin = tri1x;
+    if (tri2x < xMin)
+        xMin = tri2x;
+
+    if (tri1y < yMin)
+        yMin = tri1y;
+    if (tri2y < yMin)
+        yMin = tri2y;
+
+    if (tri1z < zMin)
+        zMin = tri1z;
+    if (tri2z < zMin)
+        zMin = tri2z;
+        
+    //xMax = (tri0x > tri1x) ? ((tri0x > tri2x) ? tri0x : tri2x) : ((tri1x > tri2x) ? tri1x : tri2x);
+    //yMax = (tri0y > tri1y) ? ((tri0y > tri2y) ? tri0y : tri2y) : ((tri1y > tri2y) ? tri1y : tri2y);
+    //zMax = (tri0z > tri1z) ? ((tri0z > tri2z) ? tri0z : tri2z) : ((tri1z > tri2z) ? tri1z : tri2z);
+
+    //xMin = (tri0x < tri1x) ? ((tri0x < tri2x) ? tri0x : tri2x) : ((tri1x < tri2x) ? tri1x : tri2x);
+    //yMin = (tri0y < tri1y) ? ((tri0y < tri2y) ? tri0y : tri2y) : ((tri1y < tri2y) ? tri1y : tri2y);
+    //zMin = (tri0z < tri1z) ? ((tri0z < tri2z) ? tri0z : tri2z) : ((tri1z < tri2z) ? tri1z : tri2z);
 
     result[0] = xMin;
     result[1] = yMin;
