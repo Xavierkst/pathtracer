@@ -67,17 +67,17 @@ RT_PROGRAM void closestHit()
         //cast shadow ray
     	float distToLight = RT_DEFAULT_MAX;
         float3 shadowRayOrigin = intersectData.hitPoint + intersectData.hitPointNormal * epsilon;
-    	Ray shadowRay = make_Ray(shadowRayOrigin, normalize(dlights[i].light_dir), 1, epsilon, distToLight);
+    	Ray shadowRay = make_Ray(shadowRayOrigin, normalize(-dlights[i].light_dir), 1, epsilon, distToLight);
     	//Ray shadowRay = make_Ray(intersectData.hitPoint, -dlights[i].light_dir, 1, epsilon, distToLight);
         ShadowPayload shadowPayload; 
         shadowPayload.isVisible = true;
     	rtTrace(root, shadowRay, shadowPayload); 
 
-        float3 half_angle = normalize(normalize(dlights[i].light_dir) + (intersectData.rayOrig - intersectData.hitPoint));
+        float3 half_angle = normalize(normalize(-dlights[i].light_dir) + (intersectData.rayOrig - intersectData.hitPoint));
         //float3 half_angle = normalize(-intersectData.rayDir + (eye - intersectData.hitPoint));
         if (shadowPayload.isVisible) {
             result += (dlights[i].light_color * (attrib.diffuse * fmaxf(
-                        dot(intersectData.hitPointNormal, normalize(dlights[i].light_dir)), .0f) +
+                        dot(intersectData.hitPointNormal, normalize(-dlights[i].light_dir)), .0f) +
                         attrib.specular * powf(fmaxf(dot(intersectData.hitPointNormal, half_angle), .0f),
                             attrib.shininess)));
         }

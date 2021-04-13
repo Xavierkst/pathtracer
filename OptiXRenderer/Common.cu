@@ -13,13 +13,8 @@ rtDeclareVariable(intersectionData, intersectData, attribute intersectData, );
 RT_PROGRAM void miss()
 {
     // Set the result to be the background color if miss
-    // TODO: change the color to backgroundColor
-    //backgroundColor = make_float3(0, 0, 1);
-    //payload.radiance = make_float3(1, 0, 0);
     payload.radiance = backgroundColor; 
     payload.done = true;
-    //rtPrintf("miss!");
-    //intersectData.hitPoint = 
 }
 
 RT_PROGRAM void exception()

@@ -132,4 +132,43 @@ RT_PROGRAM void bound(int primIndex, float result[6])
     result[3] = 1000.f;
     result[4] = 1000.f;
     result[5] = 1000.f;
+
+    //Matrix4x4 S; 
+    //float rad_2 = powf(sphere.radius, 2.0f);
+    //S.setRow(0, make_float4(rad_2, .0f, .0f, .0f));
+    //S.setRow(1, make_float4(.0f, rad_2, .0f, .0f));
+    //S.setRow(2, make_float4(.0f, .0f, rad_2,.0f));
+    //S.setRow(3, make_float4(.0f, .0f, .0f, -1.0f));
+
+    Matrix4x4 M = sphere.transform;
+    //Matrix4x4 M_T = M.transpose();
+    //Matrix4x4 R = M * S.inverse() * M_T;
+
+    //float
+    //int row = 4;
+    //int col = 4;
+    float xMax, xMin, yMax, yMin, zMax, zMin;
+    //zMax = (R[11] + sqrtf(powf(R[11], 2.0f)) - (R[15] * R[10])) / R[15];
+    //zMin = (R[11] - sqrtf(powf(R[11], 2.0f)) - (R[15] * R[10])) / R[15];
+    //yMax = (R[7] + sqrtf(powf(R[7], 2.0f)) - (R[15] * R[5])) / R[15];
+    //yMin = (R[7] - sqrtf(powf(R[7], 2.0f)) - (R[15] * R[5])) / R[15];
+    //xMax = (R[3] + sqrtf(powf(R[3], 2.0f)) - (R[15] * R[0])) / R[15];
+    //xMin = (R[3] - sqrtf(powf(R[3], 2.0f)) - (R[15] * R[0])) / R[15];
+
+    // as seen on: 
+    // https://tavianator.com/2014/ellipsoid_bounding_boxes.html
+    // we end up only requiring the matrix M in the calculation
+    xMax = M[3] + sqrtf( powf(M[0], 2.0f) + powf(M[1], 2.0f) + powf(M[2], 2.0f));
+    xMin = M[3] - sqrtf( powf(M[0], 2.0f) + powf(M[1], 2.0f) + powf(M[2], 2.0f));
+    yMax = M[7] + sqrtf( powf(M[4], 2.0f) + powf(M[5], 2.0f) + powf(M[6], 2.0f));
+    yMin = M[7] - sqrtf( powf(M[4], 2.0f) + powf(M[5], 2.0f) + powf(M[6], 2.0f));
+    zMax = M[11] + sqrtf( powf(M[8], 2.0f) + powf(M[9], 2.0f) + powf(M[10], 2.0f));
+    zMin = M[11] - sqrtf( powf(M[8], 2.0f) + powf(M[9], 2.0f) + powf(M[10], 2.0f));
+
+    result[0] = xMin;
+    result[1] = yMin;
+    result[2] = zMin;
+    result[3] = xMax;
+    result[4] = yMax;
+    result[5] = zMax;
 }

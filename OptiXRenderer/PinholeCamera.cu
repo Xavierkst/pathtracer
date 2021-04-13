@@ -58,7 +58,19 @@ RT_PROGRAM void generateRays()
     do {
         //rtPrintf("payload depth: %d and depth: %d\n", payload.depth, depth);
         Ray ray2 = make_Ray(origin, dir, 0, epsilon, RT_DEFAULT_MAX);
+        // cast initial / reflection ray
         rtTrace(root, ray2, payload);
+        
+        // cast refraction ray if ray is not a primary one 
+        //if (payload.depth != depth) {
+        //    // assuming refraction direction at hitPt is calculated:
+        //    float3 refractDir = payload.refractDir;
+        //    Ray refractRay = makeRay(origin, refractDir, 0, epsilon, RT_DEFAULT_MAX);
+        //    
+        //    
+        //    //rtTrace()
+        //}
+
         //result += make_float3(result.x * payload.radiance.x, result.y * payload.radiance.y, result.z * payload.radiance.z);
         result += payload.radiance;
          //set up for next ray cast
