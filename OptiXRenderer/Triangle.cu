@@ -189,14 +189,6 @@ RT_PROGRAM void bound(int primIndex, float result[6])
         zMin = tri1z;
     if (tri2z < zMin)
         zMin = tri2z;
-        
-    //xMax = (tri0x > tri1x) ? ((tri0x > tri2x) ? tri0x : tri2x) : ((tri1x > tri2x) ? tri1x : tri2x);
-    //yMax = (tri0y > tri1y) ? ((tri0y > tri2y) ? tri0y : tri2y) : ((tri1y > tri2y) ? tri1y : tri2y);
-    //zMax = (tri0z > tri1z) ? ((tri0z > tri2z) ? tri0z : tri2z) : ((tri1z > tri2z) ? tri1z : tri2z);
-
-    //xMin = (tri0x < tri1x) ? ((tri0x < tri2x) ? tri0x : tri2x) : ((tri1x < tri2x) ? tri1x : tri2x);
-    //yMin = (tri0y < tri1y) ? ((tri0y < tri2y) ? tri0y : tri2y) : ((tri1y < tri2y) ? tri1y : tri2y);
-    //zMin = (tri0z < tri1z) ? ((tri0z < tri2z) ? tri0z : tri2z) : ((tri1z < tri2z) ? tri1z : tri2z);
 
     result[0] = xMin;
     result[1] = yMin;
