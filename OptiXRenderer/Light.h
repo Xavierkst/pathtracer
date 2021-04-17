@@ -20,7 +20,7 @@ struct DirectionalLight
 struct QuadLight 
 {
     // quadlight comprises of 2 triangles
-    Triangle* tri1; 
-    Triangle* tri2;
+    Triangle tri1; 
+    Triangle tri2;
     optix::float3 color;
 };

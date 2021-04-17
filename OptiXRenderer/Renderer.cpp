@@ -65,8 +65,8 @@ void Renderer::initPrograms()
     programs["shadowCaster"] = createProgram("Common.cu", "anyHit");
 
     // Integrators 
-    programs["raytracer"] = createProgram("RayTracer.cu", "closestHit");
-    integrators = { "raytracer" };
+    programs[scene->integratorName] = createProgram("RayTracer.cu", "closestHit");
+    integrators = { scene->integratorName };
 }
 
 std::vector<unsigned char> Renderer::getResult()
