@@ -13,7 +13,7 @@ using namespace optix;
 // Declare light buffers
 rtBuffer<PointLight> plights;
 rtBuffer<DirectionalLight> dlights;
-rtBuffer<QuadLight> qLights;
+rtBuffer<QuadLight> qlights;
 
 // Declare variables
 rtDeclareVariable(Payload, payload, rtPayload, );
@@ -80,6 +80,33 @@ RT_PROGRAM void closestHit()
 
     // Another for-loop here to calculate contribution of quadLights
     // eg. for (int i = 0; i < qlights.size(); ++i) {}
+    for (int i = 0; i < qlights.size(); ++i) {
+        float3 f_brdf = mv.diffuse / M_PIf;// brdf function 
+        float3 hitPt = attrib.intersection;
+        float3 hitPtNormal = attrib.normal;
+
+        float3 a = qlights[i].tri1->v1;
+        float3 b = qlights[i].tri1->v2;
+        float3 c = qlights[i].tri2->v2;
+        float3 d = qlights[i].tri1->v3;
+
+
+        float theta_1 = acosf(dot(normalize(a - hitPt), normalize(b - hitPt)));
+        float theta_2 = acosf(dot(normalize(b - hitPt), normalize(c - hitPt)));
+        float theta_3 = acosf(dot(normalize(c - hitPt), normalize(d - hitPt)));
+        float theta_4 = acosf(dot(normalize(d - hitPt), normalize(a - hitPt)));
+
+        float3 gamma_1 = normalize(cross((a - hitPt), (b - hitPt)));
+        float3 gamma_2 = normalize(cross((b - hitPt), (c - hitPt)));
+        float3 gamma_3 = normalize(cross((c - hitPt), (d - hitPt)));
+        float3 gamma_4 = normalize(cross((d - hitPt), (a - hitPt)));
+
+        float3 irradiance_vec = 0.5f * (theta_1 * gamma_1 + 
+            theta_2 * gamma_2 + theta_3 * gamma_3 * theta_4 * gamma_4);
+
+        float3 dir_radiance = f_brdf * qlights[i].color * dot(irradiance_vec, hitPtNormal);
+        result += dir_radiance;
+    }
 
     // Compute the final radiance
     payload.radiance = result * payload.throughput;
