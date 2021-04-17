@@ -226,10 +226,13 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             defMv.ambient = optix::make_float3(0);
             defMv.diffuse = optix::make_float3(0);
             defMv.specular = optix::make_float3(0);
-            defMv.emission = optix::make_float3(0);
+            defMv.emission = intensity;
             defMv.shininess = 1;
 
-            defMv.diffuse = intensity; // the "diffuse color" of the light
+            defMv.diffuse = optix::make_float3(0); // the "diffuse color" of the light
+	    // The triangles added from quadlight aren't hit by light, they are the light
+	    // so they need to have an emission value not a diffuse value so that other lights
+	    // don't hit it like an object
 
             // A quad made up of 2 triangles
             Triangle tri1;    // a-b-c
@@ -240,6 +243,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri1.objType = LIGHT; // this triangle is a light source
             tri1.mv = defMv;
             // not sure if normal pointing right way..
+	    // lol I never am either it's all good.
             tri1.normal = optix::cross(ab, ac); 
 
             Triangle tri2;          // b-d-c
@@ -251,13 +255,13 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri2.mv = defMv;
             tri2.normal = tri1.normal;
 
-			scene->triangles.push_back(tri1);
+	    scene->triangles.push_back(tri1);
             scene->triangles.push_back(tri2);
 
             // we also have a quadLights vector 
             QuadLight quad; 
-			quad.tri1 = &tri1;
-            quad.tri1 = &tri2;
+	    quad.tri1 = tri1;
+            quad.tri2 = tri2;
             quad.color = intensity;
             scene->qlights.push_back(quad);
         }
