@@ -16,3 +16,11 @@ struct DirectionalLight
 {
     optix::float3 color, direction;
 };
+
+struct QuadLight 
+{
+    // quadlight comprises of 2 triangles
+    Triangle* tri1; 
+    Triangle* tri2;
+    optix::float3 color;
+};

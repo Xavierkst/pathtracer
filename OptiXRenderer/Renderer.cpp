@@ -204,6 +204,7 @@ void Renderer::buildScene()
     // Create buffers for lights
     programs["integrator"]["plights"]->set(createBuffer(scene->plights));
     programs["integrator"]["dlights"]->set(createBuffer(scene->dlights));
+    programs["integrator"]["qlights"]->set(createBuffer(scene->qlights)); // quadLights
 
     // Validate everything before running 
     context->validate();

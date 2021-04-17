@@ -24,6 +24,7 @@ struct Scene
 
     std::vector<DirectionalLight> dlights;
     std::vector<PointLight> plights;
+    std::vector<QuadLight> qlights;
 
     Scene()
     {
