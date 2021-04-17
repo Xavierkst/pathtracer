@@ -7,6 +7,8 @@
  * Structures describing different geometries should be defined here.
  */
 
+enum objectType { OBJECT, LIGHT };
+
 struct MaterialValue
 {
     optix::float3 ambient, diffuse, specular, emission;
@@ -17,12 +19,14 @@ struct Triangle
 {
     optix::float3 v1, v2, v3, normal; // transformed
     MaterialValue mv;
+    objectType objType;
 };
 
 struct Sphere
 {
     optix::Matrix4x4 trans;
     MaterialValue mv;
+    objectType objType;
 };
 
 struct Attributes
