@@ -257,7 +257,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             // we also have a quadLights vector 
             QuadLight quad; 
 			quad.tri1 = &tri1;
-            quad.tri1 = &tri2;
+            quad.tri2 = &tri2;
             quad.color = intensity;
             scene->qlights.push_back(quad);
         }
