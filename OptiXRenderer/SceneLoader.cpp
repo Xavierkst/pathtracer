@@ -117,6 +117,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             sphere.trans *= optix::Matrix4x4::scale(
                 optix::make_float3(fvalues[3]));
             sphere.mv = mv;
+            sphere.objType = OBJECT; // objectTypes oftype OBJECT == not a light source 
             scene->spheres.push_back(sphere);
         }
         else if (cmd == "maxverts" && readValues(s, 1, fvalues))
@@ -137,6 +138,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri.v3 = transformPoint(scene->vertices[ivalues[2]]);
             tri.normal = optix::normalize(cross(tri.v2 - tri.v1, tri.v3 - tri.v1));
             tri.mv = mv;
+            tri.objType = OBJECT; // objectTypes oftype OBJECT == not a light source 
             scene->triangles.push_back(tri);
         }
         else if (cmd == "translate" && readValues(s, 3, fvalues))
@@ -212,6 +214,52 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             plight.color = optix::make_float3(fvalues[3], fvalues[4], fvalues[5]);
             plight.attenuation = attenuation;
             scene->plights.push_back(plight);
+        }
+        else if (cmd == "quadLight" && readValues(s, 12, fvalues)) {
+            optix::float3 a = optix::make_float3(fvalues[0], fvalues[1], fvalues[2]);
+            optix::float3 ab = optix::make_float3(fvalues[3], fvalues[4], fvalues[5]);
+            optix::float3 ac = optix::make_float3(fvalues[6], fvalues[7], fvalues[8]);
+            optix::float3 intensity = optix::make_float3(fvalues[9], fvalues[10], fvalues[11]);
+            
+            // quad lights don't need to have material values so we just default them
+            MaterialValue defMv;
+            defMv.ambient = optix::make_float3(0);
+            defMv.diffuse = optix::make_float3(0);
+            defMv.specular = optix::make_float3(0);
+            defMv.emission = optix::make_float3(0);
+            defMv.shininess = 1;
+
+            defMv.diffuse = intensity; // the "diffuse color" of the light
+
+            // A quad made up of 2 triangles
+            Triangle tri1;    // a-b-c
+            tri1.v1 = a;      // edge a
+            tri1.v2 = a + ab; // edge b
+            tri1.v3 = a + ac; // edge c
+
+            tri1.objType = LIGHT; // this triangle is a light source
+            tri1.mv = defMv;
+            // not sure if normal pointing right way..
+            tri1.normal = optix::cross(ab, ac); 
+
+            Triangle tri2;          // b-d-c
+            tri2.v1 = a + ab;       // edge b
+            tri2.v2 = a + ab + ac;  // edge d
+            tri2.v3 = a + ac;       // edge c
+
+            tri2.objType = LIGHT; 
+            tri2.mv = defMv;
+            tri2.normal = tri1.normal;
+
+			scene->triangles.push_back(tri1);
+            scene->triangles.push_back(tri2);
+
+            // we also have a quadLights vector 
+            QuadLight quad; 
+			quad.tri1 = &tri1;
+            quad.tri1 = &tri2;
+            quad.color = intensity;
+            scene->qlights.push_back(quad);
         }
 
     }
