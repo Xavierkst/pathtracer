@@ -13,6 +13,7 @@ using namespace optix;
 // Declare light buffers
 rtBuffer<PointLight> plights;
 rtBuffer<DirectionalLight> dlights;
+rtBuffer<QuadLight> qLights;
 
 // Declare variables
 rtDeclareVariable(Payload, payload, rtPayload, );
@@ -76,6 +77,9 @@ RT_PROGRAM void closestHit()
             result += I;
         }
     }
+
+    // Another for-loop here to calculate contribution of quadLights
+    // eg. for (int i = 0; i < qlights.size(); ++i) {}
 
     // Compute the final radiance
     payload.radiance = result * payload.throughput;
