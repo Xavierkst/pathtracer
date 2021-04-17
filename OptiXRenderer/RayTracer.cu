@@ -83,7 +83,7 @@ RT_PROGRAM void closestHit()
     {
 
 	float3 points[] = {qlights[i].tri1.v1,qlights[i].tri1.v2,
-			   qlights[i].tri1.v3,qlights[i].tri2.v2};
+			   qlights[i].tri2.v2,qlights[i].tri1.v3};
 	float3 phi = make_float3(0);
 	float3 k_d = mv.diffuse;
 	float3 L_i = qlights[i].color;
