@@ -229,7 +229,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             defMv.emission = optix::make_float3(0);
             defMv.shininess = 1;
 
-            defMv.diffuse = intensity; // the "diffuse color" of the light
+            defMv.emission = intensity; // the "diffuse color" of the light
 
             // A quad made up of 2 triangles
             Triangle tri1;    // a-b-c
@@ -256,8 +256,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
 
             // we also have a quadLights vector 
             QuadLight quad; 
-			quad.tri1 = &tri1;
-            quad.tri2 = &tri2;
+			quad.tri1 = tri1;
+            quad.tri2 = tri2;
             quad.color = intensity;
             scene->qlights.push_back(quad);
         }
