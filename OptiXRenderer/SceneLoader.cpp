@@ -262,6 +262,20 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             scene->qlights.push_back(quad);
         }
 
+        else if (cmd == "lightsamples" && readValues(s, 1, fvalues)) {
+            scene->light_samples = fvalues[0];
+        }
+
+        else if (cmd == "lightstratify" && readValues(s, 1, svalues)) {
+            unsigned int stratify;
+            if (svalues->compare("on") == 0) {
+                stratify = 1;
+            }
+            else
+                stratify = 0;
+
+            scene->light_stratify = stratify;
+        }
     }
 
     in.close();

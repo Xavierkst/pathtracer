@@ -16,7 +16,10 @@ struct Scene
     Config config;
 
     std::string integratorName = "raytracer";
-    //std::string integratorName = "raytracer";
+
+    unsigned int light_samples;
+
+    unsigned int light_stratify;
 
     std::vector<optix::float3> vertices;
 

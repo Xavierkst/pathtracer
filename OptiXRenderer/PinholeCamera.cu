@@ -5,6 +5,7 @@
 
 #include "Payloads.h"
 #include "Config.h"
+#include "Light.h"
 
 using namespace optix;
 
@@ -47,9 +48,12 @@ RT_PROGRAM void generateRays()
     {
         payload.seed = tea<16>(index * frameID.x, i++);
 
-        // Trace a ray
+        // Trace a ray (or primary ray)
         Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);
         rtTrace(root, ray, payload);
+
+        // Do double for loop here to trace N*N number of rays
+        // Q: how to get the edges of each light??
 
         // Accumulate radiance
         result += payload.radiance;
@@ -58,8 +62,27 @@ RT_PROGRAM void generateRays()
         // Prepare to shoot next ray
         origin = payload.origin;
         dir = payload.dir;
-    } while (!payload.done && payload.depth != cf.maxDepth);
+    //} while (!payload.done && payload.depth != cf.maxDepth);
+    } while (!payload.done && payload.depth != 1);
     
+    //// Trace a ray (or primary ray)
+    //Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);
+    //rtTrace(root, ray, payload);
+    //// Accumulate radiance
+    //result += payload.radiance;
+    //payload.radiance = make_float3(0.f);
+    
+    // primary ray casted, now for sampling loop
+    //
+    //for (int i = 0; i < light_samples; ++i) {
+    //    for (int j = 0; j < light_samples; ++j) {
+    //        origin = payload.origin; 
+    //          
+    //    }
+    //}
+
+   
+
     if (frameID.x == 1) 
         resultBuffer[launchIndex] = result;
     else
