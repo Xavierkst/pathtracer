@@ -57,13 +57,13 @@ RT_PROGRAM void generateRays()
 
         // Accumulate radiance
         result += payload.radiance;
-        payload.radiance = make_float3(0.f);
+        //payload.radiance = make_float3(0.f);
 
         // Prepare to shoot next ray
-        origin = payload.origin;
-        dir = payload.dir;
+        //origin = payload.origin;
+        //dir = payload.dir;
     //} while (!payload.done && payload.depth != cf.maxDepth);
-    } while (!payload.done && payload.depth != 1);
+    } while (!payload.done && payload.depth != 0);
     
     //// Trace a ray (or primary ray)
     //Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);

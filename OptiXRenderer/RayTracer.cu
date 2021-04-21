@@ -113,7 +113,7 @@ RT_PROGRAM void closestHit()
                     float3 shadow_ray_origin = attrib.intersection + attrib.normal * cf.epsilon; 
                     float3 shadow_ray_dir = normalize(sampled_light_pos - shadow_ray_origin);
                     float light_dist = length(sampled_light_pos - shadow_ray_origin);
-                    Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon,  light_dist);
+                    Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon,  light_dist /*- 0.5f*/);
 
                     ShadowPayload shadow_payload;
                     shadow_payload.isVisible = true;
@@ -126,7 +126,7 @@ RT_PROGRAM void closestHit()
                         //float3 w_i = sampled_light_pos;
                         float3 f_brdf = (mv.diffuse / M_PIf) + 
                             (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) * 
-                                powf(dot(reflect(-attrib.wo, attrib.normal), normalize(sampled_light_pos - shadow_ray_origin)), mv.shininess));
+                                powf(dot(normalize(reflect(-attrib.wo, attrib.normal)), normalize(sampled_light_pos - shadow_ray_origin)), mv.shininess));
 
                         float3 x_prime = sampled_light_pos;
                         float3 x = shadow_ray_origin;
@@ -135,7 +135,7 @@ RT_PROGRAM void closestHit()
                         float R = length(x - x_prime);
                            
                         // note: normal should point AWAY from the hitpoint, i.e. dot(n_light, x - x_prime) < 0
-                        float G = (1.0f / (R * R)) * dot(n, normalize(x_prime - x)) * 
+                        float G = (1.0f / powf(R, 2.0f)) * dot(n, normalize(x_prime - x)) * 
                             (dot(n_light, normalize(x_prime - x))); 
                         
                         sampled_result += f_brdf * G;
@@ -143,7 +143,7 @@ RT_PROGRAM void closestHit()
 
                 }
             }
-            result += sampled_result * area * qlights[k].color * (1.0f / (float) light_samples);
+            result +=  qlights[k].color * sampled_result * (area / (float)light_samples);
     }
     //result += sampled_result;
 
@@ -185,17 +185,18 @@ RT_PROGRAM void closestHit()
     payload.radiance = result * payload.throughput;
 
     // Calculate reflection
-    if (length(mv.specular) > 0)
-    {
-        // Set origin and dir for tracing the reflection ray
-        payload.origin = attrib.intersection;
-        payload.dir = reflect(-attrib.wo, attrib.normal); // mirror reflection
+    //if (length(mv.specular) > 0)
+    //{
+    //    // Set origin and dir for tracing the reflection ray
+    //    payload.origin = attrib.intersection;
+    //    payload.dir = reflect(-attrib.wo, attrib.normal); // mirror reflection
 
-        payload.depth++;
-        payload.throughput *= mv.specular;
-    }
-    else
-    {
-        payload.done = true;
-    }
+    //    payload.depth++;
+    //    payload.throughput *= mv.specular;
+    //}
+    //else
+    //{
+    //    payload.done = true;
+    //}
+    payload.done = true;
 }
