@@ -33,4 +33,5 @@ struct Attributes
 {
     optix::float3 intersection, normal, wo;
     MaterialValue mv;
+    objectType objType;
 };
