@@ -67,6 +67,7 @@ void Renderer::initPrograms()
     // Integrators 
     programs["raytracer"] = createProgram("RayTracer.cu", "closestHit");
     programs["analyticdirect"] = createProgram("RayTracer.cu", "closestHit");
+    programs["direct"] = createProgram("RayTracer.cu", "closestHit");
     integrators = { "raytracer", "analyticdirect", "direct" };
     //programs[scene->integratorName] = createProgram("RayTracer.cu", "closestHit");
     //integrators = { scene->integratorName };
@@ -139,11 +140,8 @@ void Renderer::buildScene()
     context["width"]->setFloat(width);
     context["height"]->setFloat(height);
 
-    // Pass in your variables here! ------------------------    
-    //programs["rayGen"]["integratorName"]->setString(scene->integratorName);
-    programs["raytracer"]["light_stratify"]->setUint(scene->light_stratify);
-    programs["raytracer"]["light_samples"]->setUint(scene->light_samples);
 
+    //std::cout << scene->light_samples << " and " << scene->light_stratify << std::endl;
     // Set config
     std::vector<Config> configs = { config };
     Buffer configBuffer = createBuffer(configs);
@@ -157,6 +155,11 @@ void Renderer::buildScene()
             scene->integratorName);
     }
     programs["integrator"] = programs[scene->integratorName];
+    // Pass in your variables here! ------------------------    
+    //programs["rayGen"]["integratorName"]->setString(scene->integratorName);
+    programs["integrator"]["light_stratify"]->setUint(scene->light_stratify);
+    programs["integrator"]["light_samples"]->setUint(scene->light_samples);
+
 
     Material material = context->createMaterial();
     material->setClosestHitProgram(0, programs["integrator"]);

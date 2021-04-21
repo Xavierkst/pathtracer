@@ -33,7 +33,6 @@ RT_PROGRAM void closestHit()
     Config cf = config[0];
 
     float3 result = mv.ambient + mv.emission;
-    float3 sample_result = make_float3(.0f);
 
     // Calculate the direct illumination of point lights
     for (int i = 0; i < plights.size(); i++)
@@ -83,41 +82,71 @@ RT_PROGRAM void closestHit()
     }
 
     for (int k = 0; k < qlights.size(); ++k) {
+        float3 sampled_result = make_float3(.0f);
         // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
+        float3 a = qlights[k].tri1.v1;
+        float3 b = qlights[k].tri1.v2;
+        float3 c = qlights[k].tri2.v2;
+        float3 d = qlights[k].tri1.v3;
         
+        float3 ac = c - a;
+        float3 ab = b - a;
+        float area = length(cross(ab, ac));
+        int root_light_samples = (int) sqrtf(light_samples);
+        //rtPrintf("root of light samples and stratify: %d %d\n", root_light_samples, light_stratify);
         // check if stratify or random sampling
-        if (light_stratify) {
             // double for loop here 
-            for (int i = 0; i < light_samples; ++i) {
-                for (int j = 0; j < light_samples; ++j) {
-                    float3 a = qlights[k].tri1.v1;
-                    float3 b = qlights[k].tri1.v2;
-                    float3 c = qlights[k].tri2.v2;
-                    float3 d = qlights[k].tri1.v3;
-                    
-                    float3 ac = c - a;
-                    float3 ab = b - a;
+            for (int i = 0; i < root_light_samples; ++i) {
+                for (int j = 0; j < root_light_samples; ++j) {
                     // generate random float vals u1 and u2
                     float u1 = rnd(payload.seed);
                     float u2 = rnd(payload.seed);
+                    //rtPrintf("%f %f \n", u1, u2);
+                    float3 sampled_light_pos;
+                    if (light_stratify) {
+                        sampled_light_pos = a + ((j + u1) * (ab / (float)root_light_samples)) +
+                            ((i + u2) * (ac / (float)root_light_samples));
+                    }
+                    else {
+                        sampled_light_pos = a + u1 * ab + u2 * ac;
+                    }
+                    float3 shadow_ray_origin = attrib.intersection + attrib.normal * cf.epsilon; 
+                    float3 shadow_ray_dir = normalize(sampled_light_pos - shadow_ray_origin);
+                    float light_dist = length(sampled_light_pos - shadow_ray_origin);
+                    Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon,  light_dist);
 
-                    float3 ray_origin = attrib.intersection; 
-                    float3 ray_dir = a + ((j + u1) * (ab / (float) light_samples)) + ((i + u2) * (ac / (float) light_samples));
-                    Ray sample_ray = make_Ray(ray_origin, ray_dir, 0, cf.epsilon,  RT_DEFAULT_MAX);
-                    rtTrace(root, sample_ray, payload);
+                    ShadowPayload shadow_payload;
+                    shadow_payload.isVisible = true;
+                    rtTrace(root, shadow_ray, shadow_payload);
 
-                    // rendering equation here: 
-                    //float 
+                    //rtPrintf("%d", shadow_payload.isVisible);
 
-                    //sample_result += payload. 
+                    if (shadow_payload.isVisible) {
+                        // rendering equation here: 
+                        //float3 w_i = sampled_light_pos;
+                        float3 f_brdf = (mv.diffuse / M_PIf) + 
+                            (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) * 
+                                powf(dot(reflect(-attrib.wo, attrib.normal), normalize(sampled_light_pos - shadow_ray_origin)), mv.shininess));
+
+                        float3 x_prime = sampled_light_pos;
+                        float3 x = shadow_ray_origin;
+                        float3 n = attrib.normal;
+                        float3 n_light = normalize(cross(ab, ac));
+                        float R = length(x - x_prime);
+                           
+                        // note: normal should point AWAY from the hitpoint, i.e. dot(n_light, x - x_prime) < 0
+                        float G = (1.0f / (R * R)) * dot(n, normalize(x_prime - x)) * 
+                            (dot(n_light, normalize(x_prime - x))); 
+                        
+                        sampled_result += f_brdf * G;
+                    }
+
                 }
             }
-        }
-        else {
-
-        }
-
+            result += sampled_result * area * qlights[k].color * (1.0f / (float) light_samples);
     }
+    //result += sampled_result;
+
 
     // Another for-loop here to calculate contribution of quadLights
     // eg. for (int i = 0; i < qlights.size(); ++i) {}
