@@ -52,9 +52,6 @@ RT_PROGRAM void generateRays()
         Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);
         rtTrace(root, ray, payload);
 
-        // Do double for loop here to trace N*N number of rays
-        // Q: how to get the edges of each light??
-
         // Accumulate radiance
         result += payload.radiance;
         //payload.radiance = make_float3(0.f);
@@ -65,24 +62,6 @@ RT_PROGRAM void generateRays()
     //} while (!payload.done && payload.depth != cf.maxDepth);
     } while (!payload.done && payload.depth != 0);
     
-    //// Trace a ray (or primary ray)
-    //Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);
-    //rtTrace(root, ray, payload);
-    //// Accumulate radiance
-    //result += payload.radiance;
-    //payload.radiance = make_float3(0.f);
-    
-    // primary ray casted, now for sampling loop
-    //
-    //for (int i = 0; i < light_samples; ++i) {
-    //    for (int j = 0; j < light_samples; ++j) {
-    //        origin = payload.origin; 
-    //          
-    //    }
-    //}
-
-   
-
     if (frameID.x == 1) 
         resultBuffer[launchIndex] = result;
     else

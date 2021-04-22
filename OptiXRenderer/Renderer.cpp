@@ -66,11 +66,9 @@ void Renderer::initPrograms()
 
     // Integrators 
     programs["raytracer"] = createProgram("RayTracer.cu", "closestHit");
-    programs["analyticdirect"] = createProgram("RayTracer.cu", "closestHit");
-    programs["direct"] = createProgram("RayTracer.cu", "closestHit");
+    programs["analyticdirect"] = createProgram("RayTracer.cu", "analyticDirect");
+    programs["direct"] = createProgram("RayTracer.cu", "direct");
     integrators = { "raytracer", "analyticdirect", "direct" };
-    //programs[scene->integratorName] = createProgram("RayTracer.cu", "closestHit");
-    //integrators = { scene->integratorName };
 }
 
 std::vector<unsigned char> Renderer::getResult()
@@ -159,7 +157,6 @@ void Renderer::buildScene()
     //programs["rayGen"]["integratorName"]->setString(scene->integratorName);
     programs["integrator"]["light_stratify"]->setUint(scene->light_stratify);
     programs["integrator"]["light_samples"]->setUint(scene->light_samples);
-
 
     Material material = context->createMaterial();
     material->setClosestHitProgram(0, programs["integrator"]);
