@@ -115,37 +115,14 @@ RT_PROGRAM void closestHit()
             result += dir_radiance;
         }
     }
-    else { // light_samples > 0
+    else { // light_samples > 0, employ Monte Carlo
         for (int k = 0; k < qlights.size(); ++k) {
             float3 sampled_result = make_float3(.0f);
             // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
             float3 a = qlights[k].tri1.v1;
             float3 b = qlights[k].tri1.v2;
-            float3 c = qlights[k].tri2.v2;
-            float3 d = qlights[k].tri1.v3;
-
-            //float3 f_brdf_1 = mv.diffuse / M_PIf;// brdf function 
-            //float3 hitPt = attrib.intersection;
-            //float3 hitPtNormal = attrib.normal;
-
-            //float3 points[] = { qlights[k].tri1.v1, qlights[k].tri1.v2, qlights[k].tri2.v2, qlights[k].tri1.v3 };
-
-            //float3 p1 = points[0]; float3 p2 = points[1]; float3 p3 = points[2]; float3 p4 = points[3];
-            //float theta_1 = acosf(dot(normalize(p1 - hitPt), normalize(p2 - hitPt)));
-            //float theta_2 = acosf(dot(normalize(p2 - hitPt), normalize(p3 - hitPt)));
-            //float theta_3 = acosf(dot(normalize(p3 - hitPt), normalize(p4 - hitPt)));
-            //float theta_4 = acosf(dot(normalize(p4 - hitPt), normalize(p1 - hitPt)));
-
-            //float3 gamma_1 = normalize(cross((p1 - hitPt), (p2 - hitPt)));
-            //float3 gamma_2 = normalize(cross((p2 - hitPt), (p3 - hitPt)));
-            //float3 gamma_3 = normalize(cross((p3 - hitPt), (p4 - hitPt)));
-            //float3 gamma_4 = normalize(cross((p4 - hitPt), (p1 - hitPt)));
-
-            //float3 irradiance_vec = 0.5f * ((theta_1 * gamma_1) + 
-            //    (theta_2 * gamma_2) + (theta_3 * gamma_3) + (theta_4 * gamma_4));
-
-            //float3 dir_radiance = f_brdf_1 * qlights[k].color * dot(irradiance_vec, hitPtNormal);
-            //sampled_result += dir_radiance;
+            float3 c = qlights[k].tri2.v3;
+            float3 d = qlights[k].tri2.v2;
 
             float3 ac = c - a;
             float3 ab = b - a;
@@ -207,11 +184,6 @@ RT_PROGRAM void closestHit()
             result += qlights[k].color * sampled_result * (area / (float)light_samples);
         }
     }
-    //}
-
-    //result += sampled_result;
-
-
 
     // Compute the final radiance
     payload.radiance = result * payload.throughput;
