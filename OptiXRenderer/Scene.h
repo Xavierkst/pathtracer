@@ -21,6 +21,8 @@ struct Scene
 
     unsigned int light_stratify;
 
+    unsigned int samples_per_pixel;
+
     std::vector<optix::float3> vertices;
 
     std::vector<Triangle> triangles;
@@ -36,5 +38,6 @@ struct Scene
         integratorName = "raytracer";
         light_stratify = 0;
         light_samples = 0;
+        samples_per_pixel = 1;
     }
 };

@@ -82,7 +82,7 @@ RT_PROGRAM void closestHit()
     }
 
     // Compute the final radiance
-    //payload.radiance = result * payload.throughput;
+    payload.radiance = result * payload.throughput;
 
     // Calculate reflection
     if (length(mv.specular) > 0)
@@ -98,7 +98,6 @@ RT_PROGRAM void closestHit()
     {
         payload.done = true;
     }
-    //payload.done = true;
 }
 
 RT_PROGRAM void analyticDirect() {
@@ -223,3 +222,98 @@ RT_PROGRAM void direct() {
 
     payload.done = true;
 }
+
+RT_PROGRAM void pathTracer() {
+
+    MaterialValue mv = attrib.mv;
+    Config cf = config[0];
+    
+    float3 L_e = mv.emission;
+    //if (L_e.x != 0) rtPrintf("value is: %f %f %f\n", L_e.x, L_e.y, L_e.z);
+    float3 result = L_e;
+
+    // generate randomize ray direction w_i
+    
+    float zeta_1 = rnd(payload.seed); 
+    float zeta_2 = rnd(payload.seed);
+    float theta = acosf(zeta_1); 
+    float phi = 2.0f * M_PIf * zeta_2;
+
+    // qn: why rotate s wrt the z-axis? and not the y-axis?
+    float cos_phi = cosf(phi);
+    float cos_theta = fmaxf(cosf(theta), .0f);
+    float sin_phi = fmaxf(sinf(phi), .0f);
+    float sin_theta = fmaxf(sinf(phi), .0f);
+    float3 sample_s = make_float3(cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
+    //float3 sample_s = make_float3(cos_phi * sin_theta, sin_phi * sin_theta, cos_theta);
+    
+    // generate coordinate frame at the intersect point
+    float3 n = attrib.normal;
+    float3 w = normalize(n);
+    float3 a = make_float3(.0f, 1.0f, .0f);
+    // incase a and w are closely aligned, swap a out for 
+    // a diff arbitrary vector <1,0,0> instead of <0,1,0>
+    if ( 1.0f - fabsf(w.y) < .01f) {
+        a = make_float3(1.0f, .0f, .0f);
+    }
+
+ /*   if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
+
+        a = make_float3(1.0f, .0f, .0f);
+    }*/
+
+     
+    float3 u = normalize(cross(a, w));
+    float3 v = normalize(cross(w, u)); // i dont think need to normalize
+
+    // find randomized new ray dir
+    float3 w_i = (sample_s.x * u + sample_s.y * v + sample_s.z * w);   
+
+    // the BRDF 
+    float3 f_brdf = (mv.diffuse / M_PIf) +
+        (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+            powf(fmaxf(dot(normalize(reflect(attrib.wo, attrib.normal)), 
+                w_i), .0f), mv.shininess));
+
+    //float3 kd_pi = mv.diffuse / M_PIf;
+    //float3 term2 = mv.specular * ((mv.shininess + 2.0f) / 2.0f * M_PIf);
+    //float3 refl = reflect(attrib.wo, attrib.normal);
+    ////float3 refl = reflect(attrib.wo, attrib.normal);
+    ////float r_dot_w_i = dot(refl, w_i);
+    //float r_dot_w_i = 1.0f;
+
+    //float3 f_brdf = kd_pi + term2 * r_dot_w_i;
+    float3 addon_throughput = 2.0f * M_PIf * f_brdf * fmaxf(dot(n, w_i), .0f);
+    //float3 addon_throughput = 2.0f * M_PIf * f_brdf * fmaxf(dot(n, w_i), .0f);
+
+    //if (attrib.objType == LIGHT) {
+    //    result += mv.emission;
+    //}
+
+    // on the last bounce, we return only emission term
+    //if (payload.depth == (cf.maxDepth - 1)) {
+    //    payload.radiance = result;
+    //    payload.done = true;
+    //}
+    //else {
+    //    
+    //    payload.radiance = result * payload.throughput;
+    //    //if (payload.depth == 1) {
+    //    //    rtPrintf("radiance is: %f %f %f, and result is: %f %f %f \n", 
+    //    //        payload.radiance.x, payload.radiance.y, payload.radiance.z, 
+    //    //            result.x, result.y, result.z);
+    //    //}
+    //}
+    payload.radiance = payload.throughput * result;
+    //payload.radiance = result;
+    //payload.radiance = payload.throughput;
+    //rtPrintf("brdf val: %f %f %f \n", f_brdf.x, f_brdf.y, f_brdf.z);
+    //payload.radiance = f_brdf;
+    payload.throughput *= addon_throughput;
+    payload.origin = attrib.intersection;
+    payload.dir = w_i;
+
+    //rtPrintf("payload depth is: %d \n", payload.depth);
+    payload.depth++;
+}
+

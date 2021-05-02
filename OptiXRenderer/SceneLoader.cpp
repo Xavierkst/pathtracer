@@ -227,7 +227,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             defMv.diffuse = optix::make_float3(0);
             defMv.specular = optix::make_float3(0);
             defMv.emission = optix::make_float3(0);
-            defMv.shininess = 1;
+            defMv.shininess = mv.shininess;
+            //defMv.shininess = 30;
 
             defMv.emission = intensity; // the "diffuse color" of the light
 
@@ -275,6 +276,10 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
                 stratify = 0;
 
             scene->light_stratify = stratify;
+        }
+
+        else if (cmd == "spp" && readValues(s, 1, ivalues)) {
+            scene->samples_per_pixel = ivalues[0];
         }
     }
 
