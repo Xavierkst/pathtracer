@@ -157,9 +157,11 @@ void Renderer::buildScene()
     // Pass in your variables for Integrator! ------------------------    
     programs["integrator"]["light_stratify"]->setUint(scene->light_stratify);
     programs["integrator"]["light_samples"]->setUint(scene->light_samples);
+    programs["integrator"]["next_event_est"]->setUint(config.next_event_est);
 
     // Pass in your variables for Ray Generator! ---------------------
     programs["rayGen"]["samples_per_pixel"]->setInt(scene->samples_per_pixel);
+    programs["rayGen"]["next_event_est"]->setUint(config.next_event_est);
 
     Material material = context->createMaterial();
     material->setClosestHitProgram(0, programs["integrator"]);

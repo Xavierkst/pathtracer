@@ -281,6 +281,24 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         else if (cmd == "spp" && readValues(s, 1, ivalues)) {
             scene->samples_per_pixel = ivalues[0];
         }
+
+        else if (cmd == "nexteventestimation" && readValues(s, 1, svalues)) {
+            if (svalues[0].compare("on") == 0) {
+                config.next_event_est = 1;
+            }
+            else {
+                config.next_event_est = 0;
+            }
+        }
+        else if (cmd == "russianroulette" && readValues(s, 1, svalues)) {
+            if (svalues[0].compare("on") == 0) {
+                config.russian_roul = 1;
+            }
+            else {
+                config.russian_roul = 0;
+            }
+        }
+
     }
 
     in.close();

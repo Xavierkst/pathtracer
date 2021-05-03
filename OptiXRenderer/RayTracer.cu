@@ -26,6 +26,7 @@ rtDeclareVariable(Attributes, attrib, attribute attrib, );
 
 rtDeclareVariable(uint, light_samples, , );
 rtDeclareVariable(uint, light_stratify, , );
+rtDeclareVariable(uint, next_event_est, , );
 
 RT_PROGRAM void closestHit()
 {
@@ -227,23 +228,100 @@ RT_PROGRAM void pathTracer() {
 
     MaterialValue mv = attrib.mv;
     Config cf = config[0];
-    
-    float3 L_e = mv.emission;
-    //if (L_e.x != 0) rtPrintf("value is: %f %f %f\n", L_e.x, L_e.y, L_e.z);
-    float3 result = L_e;
+    // for next event est, max recur depth D - 1 
 
+    //if (next_event_est) cf.maxDepth--; 
+
+    float3 L_e = mv.emission;
+    float3 result = make_float3(.0f);
+    float3 L_d = make_float3(.0f);
+
+    // if an indir ray ever strikes light source (and it is NOT the first ray cast)
+    // ray should be terminated
+    if (attrib.objType == LIGHT && payload.depth != 0) {
+        payload.depth = cf.maxDepth;
+        payload.done = true;
+        payload.radiance = result;
+        return;
+    }
+    if (cf.next_event_est == 1) {
+
+        //rtPrintf("is next event? %d", cf.next_event_est);
+        // Add direct lighting here:
+        for (int k = 0; k < qlights.size(); ++k) {
+            float3 sampled_result = make_float3(.0f);
+            // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
+            float3 a = qlights[k].tri1.v1;
+            float3 b = qlights[k].tri1.v2;
+            float3 c = qlights[k].tri2.v3;
+            float3 d = qlights[k].tri2.v2;
+
+            float3 ac = c - a;
+            float3 ab = b - a;
+            float area = length(cross(ab, ac));
+            int root_light_samples = (int)sqrtf(light_samples);
+            // check if stratify or random sampling
+            // double for loop here 
+            //rtPrintf("light_samples and root light samples: %d and %d\n", light_samples, root_light_samples);
+            for (int i = 0; i < root_light_samples; ++i) {
+                for (int j = 0; j < root_light_samples; ++j) {
+                    // generate random float vals u1 and u2
+                    float u1 = rnd(payload.seed);
+                    float u2 = rnd(payload.seed);
+
+                    float3 sampled_light_pos;
+                    if (light_stratify) {
+                        sampled_light_pos = a + ((j + u1) * (ab / (float)root_light_samples)) +
+                            ((i + u2) * (ac / (float)root_light_samples));
+                    }
+                    else {
+                        sampled_light_pos = a + u1 * ab + u2 * ac;
+                    }
+                    float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
+                    float3 shadow_ray_dir = normalize(sampled_light_pos - shadow_ray_origin);
+                    float light_dist = length(sampled_light_pos - shadow_ray_origin);
+                    Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon, light_dist - cf.epsilon);
+
+                    ShadowPayload shadow_payload;
+                    shadow_payload.isVisible = true;
+                    rtTrace(root, shadow_ray, shadow_payload);
+
+                    if (shadow_payload.isVisible) {
+                        // rendering equation here: 
+                        //float3 w_i = sampled_light_pos;
+                        float3 f_brdf = (mv.diffuse / M_PIf) +
+                            (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+                                powf(fmaxf(dot(normalize(reflect(-attrib.wo, attrib.normal)), normalize(sampled_light_pos - shadow_ray_origin)), .0f), mv.shininess));
+
+                        float3 x_prime = sampled_light_pos;
+                        float3 x = shadow_ray_origin;
+                        float3 n = attrib.normal;
+                        //float3 n_light = normalize(qlights[k].tri1.normal);
+                        float3 n_light = normalize(cross(ab, ac));
+                        //n_light = dot(n_light, normalize(x_prime - x)) > .0f ? n_light : -n_light;
+
+                        float R = length(x - x_prime);
+
+                        // note: normal should point AWAY from the hitpoint, i.e. dot(n_light, x - x_prime) < 0
+                        float G = (1.0f / powf(R, 2.0f)) * fmaxf(dot(n, normalize(x_prime - x)), .0f) *
+                            (fmaxf(dot(n_light, normalize(x_prime - x)), .0f));
+
+                        sampled_result += f_brdf * G;
+                    }
+                }
+            }
+            L_d += qlights[k].color * sampled_result * (area / (float)light_samples);
+        }
+    }
+
+    // Add indirect lighting here:
     // generate randomize ray direction w_i
-    
     float zeta_1 = rnd(payload.seed); 
     float zeta_2 = rnd(payload.seed);
     float theta = acosf(zeta_1); 
     float phi = 2.0f * M_PIf * zeta_2;
 
     // qn: why rotate s wrt the z-axis? and not the y-axis?
-    float cos_phi = cosf(phi);
-    float cos_theta = fmaxf(cosf(theta), .0f);
-    float sin_phi = fmaxf(sinf(phi), .0f);
-    float sin_theta = fmaxf(sinf(phi), .0f);
     float3 sample_s = make_float3(cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
     //float3 sample_s = make_float3(cos_phi * sin_theta, sin_phi * sin_theta, cos_theta);
     
@@ -256,13 +334,10 @@ RT_PROGRAM void pathTracer() {
     //if ( 1.0f - fabsf(w.y) < .01f) {
     //    a = make_float3(1.0f, .0f, .0f);
     //}
-
     if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
-
         a = make_float3(1.0f, .0f, .0f);
     }
 
-     
     float3 u = normalize(cross(a, w));
     float3 v = normalize(cross(w, u)); // i dont think need to normalize
 
@@ -272,19 +347,52 @@ RT_PROGRAM void pathTracer() {
     // the BRDF 
     float3 f_brdf = (mv.diffuse / M_PIf) +
         (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-            powf(fmaxf(dot(normalize(reflect(attrib.wo, attrib.normal)), 
+            powf(fmaxf(dot(normalize(reflect(-attrib.wo, attrib.normal)), 
                 w_i), .0f), mv.shininess));
 
     float3 addon_throughput = 2.0f * M_PIf * f_brdf * fmaxf(dot(n, w_i), .0f);
 
+    // Check if its first intersected surface
+    if (cf.next_event_est && (payload.depth == 0)) {
+        result += L_e;
+        payload.radiance = (result + L_d) * payload.throughput;
+    }
     // on the last bounce, we return only emission term
-    if (payload.depth == (cf.maxDepth-1)) {
+    // NEE true (1) or false (0) 
+    // stop recursion at depth D-1 if NEE is true
+    else if (payload.depth == (cf.maxDepth - 1 - cf.next_event_est)) {
         //rtPrintf("is this ever called?");
+        result += L_e;
         payload.radiance = result;
         payload.done = true;
     }
     else {
+        if (cf.next_event_est) {
+            //if (attrib.objType == LIGHT) result = make_float3(.0f);
+            result += L_d;
+        }
+        else {
+            result += L_e;
+        }
         payload.radiance = result * payload.throughput;
+    }
+
+    float q;
+    if (cf.russian_roul) {
+        q = 1.0f - fmin(fmax(fmax(payload.throughput.x, payload.throughput.y), payload.throughput.z), 1.0f);
+        // pick a num from 0 to 1, if less than q, terminate ray
+        // i.e. make thru put 0
+        if (rnd(payload.seed) < q) {
+            addon_throughput *= make_float3(.0f);
+        }
+        else {
+            float thru_put_boost = (1.0f / (1.0f - q));
+            addon_throughput *= thru_put_boost;
+        }
+        // if ( q > rand num bet. 0 and 1 -- use seed ) { 
+        //     payload.done = true; // kill the ray if 
+
+        // else find 1/1-q --> and multiply with addon_trhoughput assign to payload
     }
     payload.throughput *= addon_throughput;
     payload.origin = attrib.intersection;

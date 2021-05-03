@@ -21,6 +21,8 @@ rtBuffer<Config> config; // Config
 
 rtDeclareVariable(int, samples_per_pixel, , );
 
+rtDeclareVariable(uint, next_event_est, , );
+
 RT_PROGRAM void generateRays()
 {
     size_t2 resultSize = resultBuffer.size();
@@ -37,22 +39,19 @@ RT_PROGRAM void generateRays()
     float3 dir = normalize(ab.x * cf.u + ab.y * cf.v - cf.w); // ray direction
     float3 origin = cf.eye; // ray origin
 
-    // Prepare a payload
     Payload payload;
-    //payload.radiance = make_float3(0.f);
-    //payload.throughput = make_float3(1.f);
-    //payload.depth = 0;
-    //payload.done = false;
     int i = 0;
 
     //rtPrintf("depth is: %d\n", cf.maxDepth); 
+    //rtPrintf("spp is: %d\n", samples_per_pixel); 
     // Iteratively trace rays (recursion is very expensive on GPU)
-    int s_pp = 1;
     for (int j = 0; j < samples_per_pixel; ++j) {
+        // Prepare new payload for each sample
         payload.radiance = make_float3(.0f);
         payload.throughput = make_float3(1.0f);
         payload.depth = 0;
         payload.done = false;
+        // jitter rays entering pixel
         xy = make_float2(launchIndex);
         xy.x += (i == 0) ? 0.5f : rnd(seed);
         xy.y += (i == 0) ? 0.5f : rnd(seed);
@@ -81,7 +80,6 @@ RT_PROGRAM void generateRays()
     
     // average out the results 
     result = (result / samples_per_pixel);
-
 
     //do
     //{

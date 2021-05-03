@@ -10,8 +10,10 @@ struct Config
     
     // Ray tracing 
     unsigned int maxDepth;
+    unsigned int next_event_est;
     float epsilon;
-
+    unsigned int russian_roul;
+    
     Config()
     {
         w = optix::make_float3(1.f, 0.f, 0.f);
@@ -22,6 +24,8 @@ struct Config
         tanHFov = optix::make_float2(tanf(0.25f * M_PIf));
 
         maxDepth = 5;
+        next_event_est = 0;
+        russian_roul = 0;
         epsilon = 0.0001f;
     }
 };
