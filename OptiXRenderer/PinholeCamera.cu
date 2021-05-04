@@ -42,6 +42,8 @@ RT_PROGRAM void generateRays()
     Payload payload;
     int i = 0;
 
+    //if (cf.next_event_est) cf.maxDepth--;
+
     //rtPrintf("depth is: %d\n", cf.maxDepth); 
     //rtPrintf("spp is: %d\n", samples_per_pixel); 
     // Iteratively trace rays (recursion is very expensive on GPU)
@@ -53,8 +55,8 @@ RT_PROGRAM void generateRays()
         payload.done = false;
         // jitter rays entering pixel
         xy = make_float2(launchIndex);
-        xy.x += (i == 0) ? 0.5f : rnd(seed);
-        xy.y += (i == 0) ? 0.5f : rnd(seed);
+        xy.x += (j == 0) ? 0.5f : rnd(seed);
+        xy.y += (j == 0) ? 0.5f : rnd(seed);
         ab = cf.tanHFov * (xy - cf.hSize) / cf.hSize;
         origin = cf.eye;
         dir = normalize(ab.x * cf.u + ab.y * cf.v - cf.w); // ray direction

@@ -228,25 +228,22 @@ RT_PROGRAM void pathTracer() {
 
     MaterialValue mv = attrib.mv;
     Config cf = config[0];
-    // for next event est, max recur depth D - 1 
-
-    //if (next_event_est) cf.maxDepth--; 
 
     float3 L_e = mv.emission;
     float3 result = make_float3(.0f);
     float3 L_d = make_float3(.0f);
-
+    
+    // When next event estimation is ON:
     // if an indir ray ever strikes light source (and it is NOT the first ray cast)
     // ray should be terminated
-    if (attrib.objType == LIGHT && payload.depth != 0) {
+    if (cf.next_event_est && attrib.objType == LIGHT && payload.depth != 0) {
         payload.depth = cf.maxDepth;
         payload.done = true;
         payload.radiance = result;
         return;
     }
-    if (cf.next_event_est == 1) {
+    if (cf.next_event_est) {
 
-        //rtPrintf("is next event? %d", cf.next_event_est);
         // Add direct lighting here:
         for (int k = 0; k < qlights.size(); ++k) {
             float3 sampled_result = make_float3(.0f);
@@ -262,7 +259,6 @@ RT_PROGRAM void pathTracer() {
             int root_light_samples = (int)sqrtf(light_samples);
             // check if stratify or random sampling
             // double for loop here 
-            //rtPrintf("light_samples and root light samples: %d and %d\n", light_samples, root_light_samples);
             for (int i = 0; i < root_light_samples; ++i) {
                 for (int j = 0; j < root_light_samples; ++j) {
                     // generate random float vals u1 and u2
@@ -296,9 +292,7 @@ RT_PROGRAM void pathTracer() {
                         float3 x_prime = sampled_light_pos;
                         float3 x = shadow_ray_origin;
                         float3 n = attrib.normal;
-                        //float3 n_light = normalize(qlights[k].tri1.normal);
                         float3 n_light = normalize(cross(ab, ac));
-                        //n_light = dot(n_light, normalize(x_prime - x)) > .0f ? n_light : -n_light;
 
                         float R = length(x - x_prime);
 
@@ -323,7 +317,6 @@ RT_PROGRAM void pathTracer() {
 
     // qn: why rotate s wrt the z-axis? and not the y-axis?
     float3 sample_s = make_float3(cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
-    //float3 sample_s = make_float3(cos_phi * sin_theta, sin_phi * sin_theta, cos_theta);
     
     // generate coordinate frame at the intersect point
     float3 n = attrib.normal;
@@ -331,9 +324,6 @@ RT_PROGRAM void pathTracer() {
     float3 a = make_float3(.0f, 1.0f, .0f);
     // incase a and w are closely aligned, swap a out for 
     // a diff arbitrary vector <1,0,0> instead of <0,1,0>
-    //if ( 1.0f - fabsf(w.y) < .01f) {
-    //    a = make_float3(1.0f, .0f, .0f);
-    //}
     if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
         a = make_float3(1.0f, .0f, .0f);
     }
@@ -360,12 +350,12 @@ RT_PROGRAM void pathTracer() {
     // on the last bounce, we return only emission term
     // NEE true (1) or false (0) 
     // stop recursion at depth D-1 if NEE is true
-    else if (payload.depth == (cf.maxDepth - 1 - cf.next_event_est)) {
-        //rtPrintf("is this ever called?");
-        result += L_e;
-        payload.radiance = result;
-        payload.done = true;
-    }
+    //else if (payload.depth == (cf.maxDepth /*- 1 - cf.next_event_est*/)) {
+    //    //rtPrintf("is this ever called?");
+    //    result += L_e;
+    //    payload.radiance = result;
+    //    payload.done = true;
+    //}
     else {
         if (cf.next_event_est) {
             //if (attrib.objType == LIGHT) result = make_float3(.0f);
@@ -381,7 +371,7 @@ RT_PROGRAM void pathTracer() {
     if (cf.russian_roul) {
         q = 1.0f - fmin(fmax(fmax(payload.throughput.x, payload.throughput.y), payload.throughput.z), 1.0f);
         // pick a num from 0 to 1, if less than q, terminate ray
-        // i.e. make thru put 0
+        // i.e. make throughput 0
         if (rnd(payload.seed) < q) {
             addon_throughput *= make_float3(.0f);
         }
@@ -389,16 +379,11 @@ RT_PROGRAM void pathTracer() {
             float thru_put_boost = (1.0f / (1.0f - q));
             addon_throughput *= thru_put_boost;
         }
-        // if ( q > rand num bet. 0 and 1 -- use seed ) { 
-        //     payload.done = true; // kill the ray if 
-
-        // else find 1/1-q --> and multiply with addon_trhoughput assign to payload
     }
     payload.throughput *= addon_throughput;
     payload.origin = attrib.intersection;
     payload.dir = w_i;
 
-    //rtPrintf("payload depth is: %d \n", payload.depth);
     payload.depth++;
 }
 
