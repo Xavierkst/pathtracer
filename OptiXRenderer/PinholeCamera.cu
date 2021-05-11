@@ -5,6 +5,7 @@
 
 #include "Payloads.h"
 #include "Config.h"
+#include "Light.h"
 
 using namespace optix;
 
@@ -47,13 +48,13 @@ RT_PROGRAM void generateRays()
     {
         payload.seed = tea<16>(index * frameID.x, i++);
 
-        // Trace a ray
+        // Trace a ray (or primary ray)
         Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);
         rtTrace(root, ray, payload);
 
         // Accumulate radiance
         result += payload.radiance;
-        payload.radiance = make_float3(0.f);
+        //payload.radiance = make_float3(0.f);
 
         // Prepare to shoot next ray
         origin = payload.origin;
@@ -65,6 +66,7 @@ RT_PROGRAM void generateRays()
     else
     {
         float u = 1.0f / (float)frameID.x;
+        //float u = (2*M_PIf) / (float)frameID.x;
         float3 oldResult = resultBuffer[launchIndex];
         resultBuffer[launchIndex] = lerp(oldResult, result, u);
     }

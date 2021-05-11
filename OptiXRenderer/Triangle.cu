@@ -48,6 +48,8 @@ RT_PROGRAM void intersect(int primIndex)
         attrib.normal = nDotWo > 0 ? tri.normal : -tri.normal;
         attrib.mv = tri.mv;
 
+        attrib.objType = tri.objType;
+
         rtReportIntersection(0);
     }
 }

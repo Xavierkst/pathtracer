@@ -65,8 +65,11 @@ void Renderer::initPrograms()
     programs["shadowCaster"] = createProgram("Common.cu", "anyHit");
 
     // Integrators 
-    programs[scene->integratorName] = createProgram("RayTracer.cu", "closestHit");
-    integrators = { scene->integratorName };
+    programs["raytracer"] = createProgram("RayTracer.cu", "closestHit");
+    programs["analyticdirect"] = createProgram("RayTracer.cu", "analyticDirect");
+    programs["direct"] = createProgram("RayTracer.cu", "direct");
+    programs["pathtracer"] = createProgram("RayTracer.cu", "pathtracer");
+    integrators = { "raytracer", "analyticdirect", "direct", "pathtracer"};
 }
 
 std::vector<unsigned char> Renderer::getResult()
@@ -128,7 +131,7 @@ void Renderer::buildScene()
     height = scene->height;
     outputFilename = scene->outputFilename;
     currentFrame = 0;
-    numFrames = 1;
+    numFrames = scene->spp;
 
     // Set width and height
     resultBuffer->setSize(width, height);
@@ -136,10 +139,13 @@ void Renderer::buildScene()
     context["width"]->setFloat(width);
     context["height"]->setFloat(height);
 
+
+    //std::cout << scene->light_samples << " and " << scene->light_stratify << std::endl;
     // Set config
     std::vector<Config> configs = { config };
     Buffer configBuffer = createBuffer(configs);
     context["config"]->set(configBuffer);
+
 
     // Set material programs based on integrator type.
     if (std::find(integrators.begin(), integrators.end(), scene->integratorName)
@@ -149,6 +155,14 @@ void Renderer::buildScene()
             scene->integratorName);
     }
     programs["integrator"] = programs[scene->integratorName];
+    // Pass in your variables here! ------------------------    
+    //programs["rayGen"]["spp"]->setUint(scene->spp);
+    programs["integrator"]["light_stratify"]->setUint(scene->light_stratify);
+    programs["integrator"]["light_samples"]->setUint(scene->light_samples);
+    programs["integrator"]["spp"]->setUint(scene->spp);
+    programs["integrator"]["NEE"]->setUint(scene->NEE);
+    programs["integrator"]["RR"]->setUint(scene->RR);
+    programs["integrator"]["IS"]->setUint(scene->IS);
 
     Material material = context->createMaterial();
     material->setClosestHitProgram(0, programs["integrator"]);

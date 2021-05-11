@@ -45,6 +45,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
 
     auto scene = std::make_shared<Scene>();
     Config& config = scene->config;
+    config.maxDepth = 5;
 
     MaterialValue mv, defaultMv;
     mv.ambient = optix::make_float3(0);
@@ -55,6 +56,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     defaultMv = mv;
 
     optix::float3 attenuation = optix::make_float3(1, 0, 0);
+
 
     transStack.push(optix::Matrix4x4::identity());
 
@@ -94,6 +96,24 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         {
             scene->integratorName = svalues[0];
         }
+	else if (cmd == "spp" && readValues(s, 1, fvalues)) {
+	    scene->spp = fvalues[0];
+	}
+	else if (cmd == "nexteventestimation" && readValues(s, 1, svalues)) {
+	    scene->NEE = svalues[0]._Equal("on") ? true : false;
+        config.maxDepth--;
+	}
+	else if (cmd == "russianroulette" && readValues(s, 1, svalues)) {
+	    scene->RR = svalues[0]._Equal("on") ? true : false;
+	}
+	else if (cmd == "importancesampling" && readValues(s, 1, svalues)) {
+	    if (scene->IS = svalues[0]._Equal("hemisphere")) {
+		scene->IS = 0;
+	    }
+	    else if (svalues[0]._Equal("cosine")){
+		scene->IS = 1;
+	    }
+	}
         else if (cmd == "camera" && readValues(s, 10, fvalues))
         {
             optix::float3 eye = optix::make_float3(fvalues[0], fvalues[1], fvalues[2]);
@@ -226,13 +246,10 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             defMv.ambient = optix::make_float3(0);
             defMv.diffuse = optix::make_float3(0);
             defMv.specular = optix::make_float3(0);
-            defMv.emission = intensity;
+            defMv.emission = optix::make_float3(0);
             defMv.shininess = 1;
 
-            defMv.diffuse = optix::make_float3(0); // the "diffuse color" of the light
-	    // The triangles added from quadlight aren't hit by light, they are the light
-	    // so they need to have an emission value not a diffuse value so that other lights
-	    // don't hit it like an object
+            defMv.emission = intensity; // the "diffuse color" of the light
 
             // A quad made up of 2 triangles
             Triangle tri1;    // a-b-c
@@ -243,7 +260,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri1.objType = LIGHT; // this triangle is a light source
             tri1.mv = defMv;
             // not sure if normal pointing right way..
-	    // lol I never am either it's all good.
             tri1.normal = optix::cross(ab, ac); 
 
             Triangle tri2;          // b-d-c
@@ -255,17 +271,31 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri2.mv = defMv;
             tri2.normal = tri1.normal;
 
-	    scene->triangles.push_back(tri1);
+			scene->triangles.push_back(tri1);
             scene->triangles.push_back(tri2);
 
             // we also have a quadLights vector 
             QuadLight quad; 
-	        quad.tri1 = tri1;
+			quad.tri1 = tri1;
             quad.tri2 = tri2;
             quad.color = intensity;
             scene->qlights.push_back(quad);
         }
 
+        else if (cmd == "lightsamples" && readValues(s, 1, fvalues)) {
+            scene->light_samples = fvalues[0];
+        }
+
+        else if (cmd == "lightstratify" && readValues(s, 1, svalues)) {
+            unsigned int stratify;
+            if (svalues->compare("on") == 0) {
+                stratify = 1;
+            }
+            else
+                stratify = 0;
+
+            scene->light_stratify = stratify;
+        }
     }
 
     in.close();
