@@ -299,6 +299,13 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             }
         }
 
+        else if (cmd == "importancesampling" && readValues(s, 1, svalues)) {
+            if (svalues[0].compare("cosine") == 0) {
+                // by default it is hemisphere sampling
+                scene->is_hemisphere_sampling = 0;
+            }
+        }
+
     }
 
     in.close();

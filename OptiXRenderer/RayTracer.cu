@@ -27,6 +27,7 @@ rtDeclareVariable(Attributes, attrib, attribute attrib, );
 rtDeclareVariable(uint, light_samples, , );
 rtDeclareVariable(uint, light_stratify, , );
 rtDeclareVariable(uint, next_event_est, , );
+rtDeclareVariable(uint, is_hemisphere_sampling, , );
 
 RT_PROGRAM void closestHit()
 {
@@ -310,9 +311,9 @@ RT_PROGRAM void pathTracer() {
 
     // Add indirect lighting here:
     // generate randomize ray direction w_i
-    float zeta_1 = rnd(payload.seed); 
+    float zeta_1 = rnd(payload.seed);
     float zeta_2 = rnd(payload.seed);
-    float theta = acosf(zeta_1); 
+    float theta = is_hemisphere_sampling ? acosf(zeta_1) : acosf(sqrtf(zeta_1)); 
     float phi = 2.0f * M_PIf * zeta_2;
 
     // qn: why rotate s wrt the z-axis? and not the y-axis?
@@ -340,7 +341,7 @@ RT_PROGRAM void pathTracer() {
             powf(fmaxf(dot(normalize(reflect(-attrib.wo, attrib.normal)), 
                 w_i), .0f), mv.shininess));
 
-    float3 addon_throughput = 2.0f * M_PIf * f_brdf * fmaxf(dot(n, w_i), .0f);
+    float3 addon_throughput = is_hemisphere_sampling ? (2.0f * M_PIf * f_brdf * fmaxf(dot(n, w_i), .0f)) : (M_PIf * f_brdf);
 
     // Check if its first intersected surface
     if (cf.next_event_est && (payload.depth == 0)) {

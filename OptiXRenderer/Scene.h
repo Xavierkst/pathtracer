@@ -23,6 +23,8 @@ struct Scene
 
     unsigned int samples_per_pixel;
 
+    unsigned int is_hemisphere_sampling;
+
     std::vector<optix::float3> vertices;
 
     std::vector<Triangle> triangles;
@@ -34,6 +36,7 @@ struct Scene
 
     Scene()
     {
+        is_hemisphere_sampling = 0;
         outputFilename = "raytrace.png";
         integratorName = "raytracer";
         light_stratify = 0;
