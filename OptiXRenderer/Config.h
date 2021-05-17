@@ -2,12 +2,14 @@
 
 #include <optixu/optixu_math_namespace.h>
 
+enum sampling_type { HEMISPHERE_SAMPLING, COSINE_SAMPLING, BRDF_SAMPLING};
+
 struct Config
 {
     // Camera 
     optix::float3 w, u, v, eye; // w, u, v: orthonormal basis of camera; eye: eye location 
     optix::float2 hSize, tanHFov; // hSize: half size; tanHFov: tan of 0.5 * fov
-    
+    float gamma; 
     // Ray tracing 
     unsigned int maxDepth;
     unsigned int next_event_est;
@@ -16,6 +18,7 @@ struct Config
     
     Config()
     {
+        gamma = 1.0f;
         w = optix::make_float3(1.f, 0.f, 0.f);
         u = optix::make_float3(0.f, 1.f, 0.f);
         v = optix::make_float3(0.f, 0.f, 1.f);

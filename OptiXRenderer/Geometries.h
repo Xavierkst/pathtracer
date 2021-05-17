@@ -9,10 +9,13 @@
 
 enum objectType { OBJECT, LIGHT };
 
+enum brdfType { MOD_PHONG, GGX };
+
 struct MaterialValue
 {
     optix::float3 ambient, diffuse, specular, emission;
-    float shininess;
+    float shininess, roughness;
+    brdfType brdf_type;
 };
 
 struct Triangle

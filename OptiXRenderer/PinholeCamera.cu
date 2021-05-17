@@ -83,6 +83,7 @@ RT_PROGRAM void generateRays()
     // average out the results 
     result = (result / samples_per_pixel);
 
+    //result = make_float3(powf(result.x, cf.gamma), powf(result.y, cf.gamma), powf(result.z, cf.gamma));
     //do
     //{
     //    payload.seed = tea<16>(index * frameID.x, i++);
@@ -108,6 +109,7 @@ RT_PROGRAM void generateRays()
         //rtPrintf("frameID is: %d", frameID.x);
         float u = 1.0f / (float)frameID.x;
         float3 oldResult = resultBuffer[launchIndex];
+        // 
         resultBuffer[launchIndex] = lerp(oldResult, result, u);
     }
 }

@@ -158,7 +158,7 @@ void Renderer::buildScene()
     programs["integrator"]["light_stratify"]->setUint(scene->light_stratify);
     programs["integrator"]["light_samples"]->setUint(scene->light_samples);
     programs["integrator"]["next_event_est"]->setUint(config.next_event_est);
-    programs["integrator"]["is_hemisphere_sampling"]->setUint(scene->is_hemisphere_sampling);
+    programs["integrator"]["sampling_method"]->setUint(scene->sampling_method);
 
     // Pass in your variables for Ray Generator! ---------------------
     programs["rayGen"]["samples_per_pixel"]->setInt(scene->samples_per_pixel);

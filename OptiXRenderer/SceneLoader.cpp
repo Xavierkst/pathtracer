@@ -52,6 +52,9 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     mv.specular = optix::make_float3(0);
     mv.emission = optix::make_float3(0);
     mv.shininess = 1;
+    mv.roughness = 1.0f;
+    // by default, geoms use Mod phong brdf
+    mv.brdf_type = MOD_PHONG; 
     defaultMv = mv;
 
     optix::float3 attenuation = optix::make_float3(1, 0, 0);
@@ -228,6 +231,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             defMv.specular = optix::make_float3(0);
             defMv.emission = optix::make_float3(0);
             defMv.shininess = mv.shininess;
+            defMv.roughness = mv.roughness;
+            defMv.brdf_type = mv.brdf_type;
             //defMv.shininess = 30;
 
             defMv.emission = intensity; // the "diffuse color" of the light
@@ -300,10 +305,32 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         }
 
         else if (cmd == "importancesampling" && readValues(s, 1, svalues)) {
+            // default is hemisphere sampling already
             if (svalues[0].compare("cosine") == 0) {
                 // by default it is hemisphere sampling
-                scene->is_hemisphere_sampling = 0;
+                scene->sampling_method = COSINE_SAMPLING;
             }
+
+            else if (svalues[0].compare("brdf") == 0) {
+                scene->sampling_method = BRDF_SAMPLING;
+            }
+        }
+
+        else if (cmd == "brdf" && readValues(s, 1, svalues)) {
+            // default is hemisphere sampling already
+            if (svalues[0].compare("ggx") == 0) {
+                mv.brdf_type = GGX;
+            }
+        }
+
+        else if (cmd == "roughness" && readValues(s, 1, fvalues)) {
+            // default is hemisphere sampling already
+            mv.roughness = fvalues[0];
+        }
+
+        else if (cmd == "gamma" && readValues(s, 1, fvalues)) {
+            // default is hemisphere sampling already
+            config.gamma = fvalues[0];
         }
 
     }
