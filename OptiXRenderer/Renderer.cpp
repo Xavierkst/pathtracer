@@ -82,7 +82,7 @@ std::vector<unsigned char> Renderer::getResult()
     };
 
     float3* bufferData = (float3*)resultBuffer->map();
-
+    
     // Store the data into a byte vector
     std::vector<unsigned char> imageData(width * height * 4);
     for (int i = 0; i < height; i++)
@@ -91,6 +91,7 @@ std::vector<unsigned char> Renderer::getResult()
         {
             int index = (i * width + j) * 4;
             float3 pixel = bufferData[(height - i - 1) * width + j];
+            // gamma correction included
             imageData[index + 0] = cast(pixel.x);
             imageData[index + 1] = cast(pixel.y);
             imageData[index + 2] = cast(pixel.z);

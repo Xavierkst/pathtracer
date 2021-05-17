@@ -246,8 +246,184 @@ RT_PROGRAM void pathTracer() {
         payload.radiance = result;
         return;
     }
-    if (cf.next_event_est) {
 
+    // Add indirect lighting here:
+    // generate randomize ray direction w_i
+    float zeta_0 = rnd(payload.seed);
+    float zeta_1 = rnd(payload.seed);
+    float zeta_2 = rnd(payload.seed);
+    float K_s_avg = (K_s.x + K_s.y + K_s.z) / 3.0f;
+    float K_d_avg = (K_d.x + K_d.y + K_d.z) / 3.0f;
+    //rtPrintf("ks %f\n", K_s_avg);
+    //rtPrintf("kd %f\n", K_d_avg);
+    float t = .0f;
+    // make sure denom not 0, else check if phong or ggx
+    // and set t accordingly
+    if ((K_s_avg == .0f) && (K_d_avg == .0f)) {
+        //rtPrintf("heeeere\n");
+        // if denom is 0, t is 0 when brdf is modified phong, and 1 for ggx
+        if (mv.brdf_type == MOD_PHONG) 
+            t = .0f;
+        else if (mv.brdf_type == GGX) 
+            t = 1.0f;
+    }
+    else {
+        // denom is not zero
+        //rtPrintf("OR heeeere\n");
+        //rtPrintf("ks %f\n", K_s_avg);
+        //rtPrintf("kd %f\n", K_d_avg);
+        float k_val = K_s_avg / (K_s_avg + K_d_avg);
+        if (mv.brdf_type == MOD_PHONG) {
+            t = k_val;
+            //rtPrintf("k value is: %f\n", k_val);
+            //if (t != .0f) 
+            //    rtPrintf("t value is: %f\n", t);
+
+        }
+        else {
+            t = fmaxf(.25f, k_val);
+            //rtPrintf("t value is: %f\n", t);
+        }
+    }
+
+    float theta = .0f;
+    float phi = .0f;
+    switch (sampling_method) {
+        case HEMISPHERE_SAMPLING: 
+            //rtPrintf("hemisphere here\n");
+            phi = 2.0f * M_PIf * zeta_2;
+            theta = acosf(zeta_1);
+            break;
+        case COSINE_SAMPLING: 
+            //rtPrintf("cosine here\n");
+            phi = 2.0f * M_PIf * zeta_2;
+            theta = acosf(sqrtf(zeta_1));
+            break;
+        case BRDF_SAMPLING: 
+            //rtPrintf("brdf here\n");
+            // phi remains the same for either specular or diffuse pdf
+            phi = 2.0f * M_PIf * zeta_2;
+            if (zeta_0 > t) 
+                theta = acosf(sqrtf(zeta_1)); // theta_diffuse
+            else 
+                theta = acosf(powf(zeta_1, (1.0f / (mv.shininess + 1.0f)))); // theta_specular
+            break;
+        default: 
+    }
+
+    // qn: why rotate s wrt the z-axis? and not the y-axis?
+    float3 sample_s = make_float3(cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
+    
+    // generate coordinate frame at the intersect point
+    float3 n = normalize(attrib.normal);
+    float3 w = n;
+    // if specular brdf chosen, center sample_s at reflection vector r
+    if ((zeta_0 <= t) && (sampling_method == BRDF_SAMPLING)) w = r;
+
+    //else w = normalize(n);
+
+    float3 a = make_float3(.0f, 1.0f, .0f);
+    // incase a and w are closely aligned, swap a out for 
+    // a diff arbitrary vector <1,0,0> instead of <0,1,0>
+    if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
+        a = make_float3(1.0f, .0f, .0f);
+    }
+
+    float3 u = normalize(cross(a, w));
+    float3 v = normalize(cross(w, u)); // i dont think need to normalize
+
+    float theta_h_sample = atanf((mv.roughness * sqrtf(zeta_1)) / sqrtf(1.0f - zeta_1));
+    float phi_h_sample = 2.0f * M_PIf * zeta_2;
+    float3 h_sample = make_float3(cosf(phi_h_sample) * sinf(theta_h_sample), 
+        sinf(phi_h_sample)*sinf(theta_h_sample), 
+            cosf(theta_h_sample));
+
+    float3 w_h = n; 
+    float3 a_h = make_float3(.0f, 1.0f, .0f); 
+    if (1.0f - fabsf(dot(a_h, w_h)) <= 1.0f) {
+        a_h = make_float3(1.0f, .0f, .0f);
+    }
+    
+    float3 u_h = normalize(cross(a_h, w_h)); 
+    float3 v_h = normalize(cross(w_h, u_h));
+
+    // rotate h:
+    float3 w_i = make_float3(.0f); 
+    // get randomized new ray dir -- choose a sampling method
+    if (mv.brdf_type == MOD_PHONG) 
+        w_i = normalize((sample_s.x * u + sample_s.y * v + sample_s.z * w));
+    else {
+        h_sample = (h_sample.x * u_h + h_sample.y * v_h + h_sample.z * w_h);
+        w_i = normalize(reflect(-attrib.wo, h_sample));
+    }
+
+    // the BRDF 
+    float3 f_brdf = make_float3(0.0f);
+    float pdf = 1.0f;
+    float3 addon_throughput = make_float3(.0f);
+
+    switch (sampling_method) {
+        case HEMISPHERE_SAMPLING: 
+            //rtPrintf("hemisphere here");
+            f_brdf = (mv.diffuse / M_PIf) +
+                (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+                    powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
+            pdf = 1.0f / (2.0f * M_PIf);
+            addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf)) ;
+            break;
+        case COSINE_SAMPLING: 
+            //rtPrintf("cosine here");
+            f_brdf = (mv.diffuse / M_PIf) +
+                (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+                    powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
+            pdf = fmaxf(dot(n, w_i), .0f) / (M_PIf);
+            addon_throughput = (f_brdf) * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf);
+            break;
+        case BRDF_SAMPLING: 
+            //rtPrintf("brdf here");
+            // check the material whether to use mod-phong or GGX brdf
+            if (mv.brdf_type == MOD_PHONG) {
+                f_brdf = (K_d / M_PIf) +
+                    (K_s * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+                        powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
+
+                pdf = ((1.0f - t) * (dot(n, w_i) / M_PIf)) + 
+                    t * ((mv.shininess + 1.0f) / (2.0f * M_PIf)) * 
+                        powf(fmaxf(dot(r, w_i), .0f), mv.shininess);
+            }
+            else {
+                // construct GGX BRDF: 
+                float wi_dot_n = dot(w_i, n); 
+                float wo_dot_n = dot(attrib.wo, n); 
+                if (wi_dot_n > .0f && wo_dot_n > .0f) {
+                    float alpha = mv.roughness;
+                    float3 h = normalize(w_i + attrib.wo); // half angle: 
+                    float theta_h = acosf(dot(h, n)); // not sure if need to clamp 0
+                    // microfacet distribution function, D: 
+                    float cos_theta_h_4 = powf(cosf(theta_h), 4.0f);
+                    float alpha_tan_theta_h_sq = (alpha * alpha) + powf(tanf(theta_h), 2.0f);
+                    float D = .0f;
+                    // make sure denom not 0, else set D to 0
+                    if (cos_theta_h_4 * alpha_tan_theta_h_sq != .0f) D = (alpha * alpha) / (M_PIf * cos_theta_h_4 * powf(alpha_tan_theta_h_sq, 2.0f));
+                        //D = (alpha * alpha) / (M_PIf * powf(cosf(theta_h), 4.0f) * powf(alpha_tan_theta_h_sq, 2.0f));
+                    // shadow-masking function, G:  
+                    float G_1_wi = (wi_dot_n > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tanf(acosf(dot(w_i, n))), 2.0f))) : .0f;
+                    float G_1_wo = (wo_dot_n > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tan(acosf(dot(attrib.wo, n))), 2.0f))) : .0f;
+                    float G = G_1_wi * G_1_wo;
+                    // fresnel function, F:
+                    float3 F = K_s + (1.0f - K_s) * powf(1.0f - fmaxf(dot(w_i, h), .0f), 5.0f);
+                    float3 f_brdf_GGX = (F * G * D) / (4.0f * wi_dot_n * wo_dot_n);
+                    f_brdf = (K_d / M_PIf) + f_brdf_GGX;
+                    pdf = ((1.0f - t) * fmaxf(dot(n, w_i), .0f) / M_PIf) + ((t * D * dot(n, h)) / (4.0f * dot(h, w_i)));
+                }
+                else f_brdf = make_float3(.0f); // assume f zero otherwise
+            }
+            addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
+            break;
+        default:
+    }
+
+    if (cf.next_event_est) {
         // Add direct lighting here:
         for (int k = 0; k < qlights.size(); ++k) {
             float3 sampled_result = make_float3(.0f);
@@ -290,9 +466,40 @@ RT_PROGRAM void pathTracer() {
                     if (shadow_payload.isVisible) {
                         // rendering equation here: 
                         //float3 w_i = sampled_light_pos;
-                        float3 f_brdf = (mv.diffuse / M_PIf) +
+                        float3 w_i_dir = normalize(sampled_light_pos - shadow_ray_origin); 
+                        float3 f_brdf = make_float3(.0f);
+                        if (mv.brdf_type == MOD_PHONG) {
+                            f_brdf = (mv.diffuse / M_PIf) +
                             (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                                powf(fmaxf(dot(r, normalize(sampled_light_pos - shadow_ray_origin)), .0f), mv.shininess));
+                                powf(fmaxf(dot(r, w_i_dir), .0f), mv.shininess));
+                        }
+                        else {
+                            float wi_dot_n_dir = dot(w_i_dir, n); 
+                            float wo_dot_n_dir = dot(attrib.wo, n); 
+                            if (wi_dot_n_dir > .0f && wo_dot_n_dir > .0f) {
+                                float alpha = mv.roughness;
+                                float3 h = normalize(w_i_dir + attrib.wo); // half angle: 
+                                float theta_h = acosf(dot(h, n)); // not sure if need to clamp 0
+                                float cos_theta_h_4 = powf(cosf(theta_h), 4.0f);
+                                float alpha_tan_theta_h_sq = (alpha * alpha) + powf(tanf(theta_h), 2.0f);
+                                float D = .0f;
+                                // make sure denom not 0, else set D to 0
+                                if (cos_theta_h_4 * alpha_tan_theta_h_sq != .0f) D = (alpha * alpha) / (M_PIf * cos_theta_h_4 * powf(alpha_tan_theta_h_sq, 2.0f));
+
+                                // microfacet distribution function, D: 
+                                //float D = (alpha * alpha) / (M_PIf * powf(cosf(theta_h), 4.0f) * powf((alpha * alpha) + powf(tanf(theta_h), 2.0f), 2.0f));
+
+                                // shadow-masking function, G:  
+                                float G_1_wi = (wi_dot_n_dir > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tanf(acosf(dot(w_i_dir, n))), 2.0f))) : .0f;
+                                float G_1_wo = (wo_dot_n_dir > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tanf(acosf(dot(attrib.wo, n))), 2.0f))) : .0f;
+                                float G = G_1_wi * G_1_wo;
+                                // fresnel function, F:
+                                float3 F = K_s + (1.0f - K_s) * powf(1.0f - dot(w_i_dir, h), 5.0f);
+                                float3 f_brdf_GGX = (F * G * D) / (4.0f * wi_dot_n_dir * wo_dot_n_dir);
+
+                                f_brdf = (K_d / M_PIf) + f_brdf_GGX;
+                            }
+                        }
 
                         float3 x_prime = sampled_light_pos;
                         float3 x = shadow_ray_origin;
@@ -313,154 +520,6 @@ RT_PROGRAM void pathTracer() {
         }
     }
 
-    // Add indirect lighting here:
-    // generate randomize ray direction w_i
-    float zeta_0 = rnd(payload.seed);
-    float zeta_1 = rnd(payload.seed);
-    float zeta_2 = rnd(payload.seed);
-    float K_s_avg = (K_s.x + K_s.y + K_s.z) / 3.0f;
-    float K_d_avg = (K_d.x + K_d.y + K_d.z) / 3.0f;
-    //rtPrintf("ks %f\n", K_s_avg);
-    //rtPrintf("kd %f\n", K_d_avg);
-    float t = .0f;
-    // make sure denom not 0, else check if phong or ggx
-    // and set t accordingly
-    if ((K_s_avg + K_d_avg == .0f)) {
-        //rtPrintf("heeeere\n");
-        if (mv.brdf_type == MOD_PHONG) t = 0.0f;
-        else t = 1.0f;
-    }
-    else {
-        //rtPrintf("OR heeeere\n");
-        float k_val = K_s_avg / (K_s_avg + K_d_avg);
-        if (mv.brdf_type == MOD_PHONG) t = k_val;
-        else t = fmaxf(.25f, k_val);
-    }
-
-    float theta;
-    float phi;
-    //rtPrintf("sampling method: %d", sampling_method);
-    switch (sampling_method) {
-        case HEMISPHERE_SAMPLING: 
-            //rtPrintf("hemisphere here\n");
-            phi = 2.0f * M_PIf * zeta_2;
-            theta = acosf(zeta_1);
-            break;
-        case COSINE_SAMPLING: 
-            //rtPrintf("cosine here\n");
-            phi = 2.0f * M_PIf * zeta_2;
-            theta = acosf(sqrtf(zeta_1));
-            break;
-        case BRDF_SAMPLING: 
-            //rtPrintf("brdf here\n");
-            // phi remains the same for either specular or diffuse pdf
-            phi = 2.0f * M_PIf * zeta_2;
-            if (zeta_0 > t) 
-                theta = acosf(sqrtf(zeta_1)); // theta_diffuse
-            else 
-                theta = acosf(powf(zeta_1, (1.0f / (mv.shininess + 1.0f)))); // theta_specular
-            break;
-        default: 
-    }
-
-    // qn: why rotate s wrt the z-axis? and not the y-axis?
-    float3 sample_s = make_float3(cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
-    
-    // generate coordinate frame at the intersect point
-    float3 n = normalize(attrib.normal);
-    float3 w = n;
-    // if specular chosen, center sample_s at reflection vector r
-    if ((zeta_0 <= t) && (sampling_method == BRDF_SAMPLING)) w = normalize(r);
-    //else w = normalize(n);
-
-    float3 a = make_float3(.0f, 1.0f, .0f);
-    // incase a and w are closely aligned, swap a out for 
-    // a diff arbitrary vector <1,0,0> instead of <0,1,0>
-    if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
-        a = make_float3(1.0f, .0f, .0f);
-    }
-
-    float3 u = normalize(cross(a, w));
-    float3 v = normalize(cross(w, u)); // i dont think need to normalize
-
-    float theta_h_sample = atanf((mv.roughness * sqrtf(zeta_1)) / sqrtf(1.0f - zeta_1));
-    float phi_h_sample = 2.0f * M_PIf * zeta_2;
-    float3 h_sample = make_float3(cosf(phi_h_sample) * sinf(theta_h_sample), 
-        sinf(phi_h_sample)*sinf(theta_h_sample), 
-            cosf(theta_h_sample));
-
-    // rotate h:
-    float3 w_i = make_float3(.0f); 
-    // get randomized new ray dir -- choose a sampling method
-    if (mv.brdf_type == MOD_PHONG) 
-        w_i = (sample_s.x * u + sample_s.y * v + sample_s.z * w);   
-    else {
-        h_sample = (h_sample.x * u + h_sample.y * v + h_sample.z * w);
-        w_i = (reflect(-attrib.wo, h_sample));
-    }
-
-    // the BRDF 
-    float3 f_brdf = make_float3(0.0f);
-    float pdf = 1.0f;
-    float3 addon_throughput = make_float3(.0f);
-
-    switch (sampling_method) {
-        case HEMISPHERE_SAMPLING: 
-            //rtPrintf("hemisphere here");
-            f_brdf = (mv.diffuse / M_PIf) +
-                (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                    powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
-            pdf = 1.0f / (2.0f * M_PIf);
-            addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf)) ;
-            break;
-        case COSINE_SAMPLING: 
-            //rtPrintf("cosine here");
-            f_brdf = (mv.diffuse / M_PIf) +
-                (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                    powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
-            pdf = fmaxf(dot(n, w_i), .0f) / (M_PIf);
-            addon_throughput = (f_brdf) * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf);
-            break;
-        case BRDF_SAMPLING: 
-            //rtPrintf("brdf here");
-            // check the material whether to use mod-phong or GGX brdf
-            if (mv.brdf_type == MOD_PHONG) {
-                f_brdf = (K_d / M_PIf) +
-                    (K_s * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                        powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
-
-                pdf = ((1.0f - t) * (fmaxf(dot(n, w_i), .0f) / M_PIf)) + 
-                    t * ((mv.shininess + 1.0f) / (2.0f * M_PIf)) * 
-                        powf(fmaxf(dot(r, w_i), .0f), mv.shininess);
-            }
-            else {
-                // construct GGX BRDF: 
-                float wi_dot_n = dot(w_i, n); 
-                float wo_dot_n = dot(attrib.wo, n); 
-                if (wi_dot_n > .0f && wo_dot_n > .0f) {
-                    float alpha = mv.roughness;
-                    float3 h = normalize(w_i + attrib.wo); // half angle: 
-                    float theta_h = acosf(dot(h, n)); // not sure if need to clamp 0
-                    // microfacet distribution function, D: 
-                    float D = (alpha * alpha) / (M_PIf * powf(cosf(theta_h), 4.0f) * powf((alpha * alpha) + powf(tanf(theta_h), 2.0f), 2.0f));
-                    // shadow-masking function, G:  
-                    float G_1_wi = (wi_dot_n > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tanf(acosf(dot(w_i, n))), 2.0f))) : .0f;
-                    float G_1_wo = (wo_dot_n > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tanf(acosf(dot(attrib.wo, n))), 2.0f))) : .0f;
-                    float G = G_1_wi * G_1_wo;
-
-                    // fresnel function, F:
-                    float3 F = K_s + (make_float3(1.0f) - K_s) * powf(1.0f - dot(w_i, h), 5.0f);
-                    float3 f_brdf_GGX = (F * G * D) / (4.0f * wi_dot_n * wo_dot_n);
-                    f_brdf = (K_d / M_PIf) + f_brdf_GGX;
-
-                    pdf = ((1 - t) * (wi_dot_n / M_PIf)) + ((t * D * dot(n, h)) / (4.0f * dot(h, w_i)));
-                }
-                else f_brdf = make_float3(.0f); // assume f zero otherwise
-            }
-            addon_throughput = (f_brdf * fmax(dot(n, w_i), 0) * (1.0f / pdf));
-            break;
-        default:
-    }
 
     // Check if its first intersected surface
     if (cf.next_event_est && (payload.depth == 0)) {

@@ -83,4 +83,5 @@ public:
     int getNumFrames() { return numFrames; }
     int getCurrentFrame() { return currentFrame; }
     optix::Buffer& getResultBuffer() { return resultBuffer; }
+    std::shared_ptr<Scene> getScene() { return scene; }
 };

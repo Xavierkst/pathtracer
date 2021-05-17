@@ -47,11 +47,11 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     Config& config = scene->config;
 
     MaterialValue mv, defaultMv;
-    mv.ambient = optix::make_float3(0);
-    mv.diffuse = optix::make_float3(0);
-    mv.specular = optix::make_float3(0);
+    mv.ambient = optix::make_float3(0.0f);
+    mv.diffuse = optix::make_float3(0.0f);
+    mv.specular = optix::make_float3(0.0f);
     mv.emission = optix::make_float3(0);
-    mv.shininess = 1;
+    mv.shininess = 1.0f;
     mv.roughness = 1.0f;
     // by default, geoms use Mod phong brdf
     mv.brdf_type = MOD_PHONG; 
@@ -202,6 +202,10 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         {
             mv.shininess = fvalues[0];
         }
+        else if (cmd == "roughness" && readValues(s, 1, fvalues)) {
+            // default is hemisphere sampling already
+            mv.roughness = fvalues[0];
+        }
         else if (cmd == "directional" && readValues(s, 6, fvalues))
         {
             DirectionalLight dlight;
@@ -226,13 +230,14 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             
             // quad lights don't need to have material values so we just default them
             MaterialValue defMv;
-            defMv.ambient = optix::make_float3(0);
-            defMv.diffuse = optix::make_float3(0);
-            defMv.specular = optix::make_float3(0);
-            defMv.emission = optix::make_float3(0);
-            defMv.shininess = mv.shininess;
-            defMv.roughness = mv.roughness;
-            defMv.brdf_type = mv.brdf_type;
+            defMv = mv;
+            //defMv.ambient = optix::make_float3(0);
+            //defMv.diffuse = optix::make_float3(0);
+            //defMv.specular = optix::make_float3(0);
+            //defMv.emission = optix::make_float3(0);
+            //defMv.shininess = mv.shininess;
+            //defMv.roughness = mv.roughness;
+            //defMv.brdf_type = mv.brdf_type;
             //defMv.shininess = 30;
 
             defMv.emission = intensity; // the "diffuse color" of the light
@@ -321,11 +326,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             if (svalues[0].compare("ggx") == 0) {
                 mv.brdf_type = GGX;
             }
-        }
-
-        else if (cmd == "roughness" && readValues(s, 1, fvalues)) {
-            // default is hemisphere sampling already
-            mv.roughness = fvalues[0];
         }
 
         else if (cmd == "gamma" && readValues(s, 1, fvalues)) {

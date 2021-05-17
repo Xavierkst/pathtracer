@@ -37,7 +37,7 @@ int main(int argc, char** argv)
                 begin).count() * float(1e-6) 
                 << " seconds" 
                 << std::endl;
-
+           
             resultToPNG(renderer.getOutputFilename(),
                 renderer.getWidth(),
                 renderer.getHeight(),

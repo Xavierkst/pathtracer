@@ -83,7 +83,7 @@ RT_PROGRAM void generateRays()
     // average out the results 
     result = (result / samples_per_pixel);
 
-    //result = make_float3(powf(result.x, cf.gamma), powf(result.y, cf.gamma), powf(result.z, cf.gamma));
+    result = make_float3(powf(result.x, 1.0f / cf.gamma), powf(result.y, 1.0f / cf.gamma), powf(result.z, 1.0f / cf.gamma));
     //do
     //{
     //    payload.seed = tea<16>(index * frameID.x, i++);
