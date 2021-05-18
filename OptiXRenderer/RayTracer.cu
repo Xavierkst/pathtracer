@@ -461,7 +461,7 @@ RT_PROGRAM void pathTracer() {
                             (fmaxf(dot(n_light, normalize(x_prime - x)), .0f));
 
                         sampled_result += f_brdf * G;
-                        pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i_dir)))); 
+                        //pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i_dir)))); 
                     }
                 }
             }
@@ -487,6 +487,121 @@ RT_PROGRAM void pathTracer() {
         }
     }
 
+    //// Add indirect lighting here:
+    //// generate randomize ray direction w_i
+    //float zeta_0 = rnd(payload.seed);
+    //float zeta_1 = rnd(payload.seed);
+    //float zeta_2 = rnd(payload.seed);
+    //float K_s_avg = (K_s.x + K_s.y + K_s.z) / 3.0f;
+    //float K_d_avg = (K_d.x + K_d.y + K_d.z) / 3.0f;
+    ////rtPrintf("ks %f\n", K_s_avg);
+    ////rtPrintf("kd %f\n", K_d_avg);
+    //float t = .0f;
+    //// make sure denom not 0, else check if phong or ggx
+    //// and set t accordingly
+    //if ((K_s_avg == .0f) && (K_d_avg == .0f)) {
+    //    //rtPrintf("heeeere\n");
+    //    // if denom is 0, t is 0 when brdf is modified phong, and 1 for ggx
+    //    if (mv.brdf_type == MOD_PHONG) 
+    //        t = .0f;
+    //    else if (mv.brdf_type == GGX) 
+    //        t = 1.0f;
+    //}
+    //else {
+    //    // denom is not zero
+    //    //rtPrintf("OR heeeere\n");
+    //    //rtPrintf("ks %f\n", K_s_avg);
+    //    //rtPrintf("kd %f\n", K_d_avg);
+    //    float k_val = K_s_avg / (K_s_avg + K_d_avg);
+    //    if (mv.brdf_type == MOD_PHONG) {
+    //        t = k_val;
+    //        //rtPrintf("k value is: %f\n", k_val);
+    //        //if (t != .0f) 
+    //        //    rtPrintf("t value is: %f\n", t);
+
+    //    }
+    //    else {
+    //        t = fmaxf(.25f, k_val);
+    //        //rtPrintf("t value is: %f\n", t);
+    //    }
+    //}
+
+    //float theta = .0f;
+    //float phi = .0f;
+    //switch (sampling_method) {
+    //    case HEMISPHERE_SAMPLING: 
+    //        //rtPrintf("hemisphere here\n");
+    //        phi = 2.0f * M_PIf * zeta_2;
+    //        theta = acosf(zeta_1);
+    //        break;
+    //    case COSINE_SAMPLING: 
+    //        //rtPrintf("cosine here\n");
+    //        phi = 2.0f * M_PIf * zeta_2;
+    //        theta = acosf(sqrtf(zeta_1));
+    //        break;
+    //    case BRDF_SAMPLING: 
+    //        //rtPrintf("brdf here\n");
+    //        // phi remains the same for either specular or diffuse pdf
+    //        phi = 2.0f * M_PIf * zeta_2;
+    //        if (zeta_0 > t) 
+    //            theta = acosf(sqrtf(zeta_1)); // theta_diffuse
+    //        else 
+    //            theta = acosf(powf(zeta_1, (1.0f / (mv.shininess + 1.0f)))); // theta_specular
+    //        break;
+    //    default: 
+    //        break;
+    //}
+
+    //// qn: why rotate s wrt the z-axis? and not the y-axis?
+    //float3 sample_s = make_float3(cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
+    //
+    //// generate coordinate frame at the intersect point
+    //float3 w = n;
+    //// if specular brdf chosen, center sample_s at reflection vector r
+    //if ((zeta_0 <= t) && (sampling_method == BRDF_SAMPLING)) w = r;
+
+    ////else w = normalize(n);
+
+    //float3 a = make_float3(.0f, 1.0f, .0f);
+    //// incase a and w are closely aligned, swap a out for 
+    //// a diff arbitrary vector <1,0,0> instead of <0,1,0>
+    //if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
+    //    a = make_float3(1.0f, .0f, .0f);
+    //}
+
+    //float3 u = normalize(cross(a, w));
+    //float3 v = normalize(cross(w, u)); // i dont think need to normalize
+
+    //float theta_h_sample = atanf((mv.roughness * sqrtf(zeta_1)) / sqrtf(1.0f - zeta_1));
+    //float phi_h_sample = 2.0f * M_PIf * zeta_2;
+    //float3 h_sample = make_float3(cosf(phi_h_sample) * sinf(theta_h_sample), 
+    //    sinf(phi_h_sample)*sinf(theta_h_sample), 
+    //        cosf(theta_h_sample));
+
+    //float3 w_h = n; 
+    //float3 a_h = make_float3(.0f, 1.0f, .0f); 
+    //if (1.0f - fabsf(dot(a_h, w_h)) <= 1.0f) {
+    //    a_h = make_float3(1.0f, .0f, .0f);
+    //}
+    //
+    //float3 u_h = normalize(cross(a_h, w_h)); 
+    //float3 v_h = normalize(cross(w_h, u_h));
+
+    //// rotate h:
+    //float3 w_i = make_float3(.0f); 
+    //// get randomized new ray dir -- choose a sampling method
+    //if (mv.brdf_type == MOD_PHONG) 
+    //    w_i = normalize((sample_s.x * u + sample_s.y * v + sample_s.z * w));
+    //else {
+    //    h_sample = (h_sample.x * u_h + h_sample.y * v_h + h_sample.z * w_h);
+    //    w_i = normalize(reflect(-attrib.wo, h_sample));
+    //}
+
+
+
+    // calculate the summation of all pdfs here (i.e. pdf_nee + pdf_brdf)
+    // using h, w_i, 
+    
     // the BRDF 
     float3 f_brdf = make_float3(0.0f);
     float pdf = 1.0f;
@@ -602,7 +717,7 @@ RT_PROGRAM void pathTracer() {
             addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
         }
         break;
-    default:
+        default:
     }
 
 
