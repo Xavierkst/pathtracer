@@ -53,6 +53,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     mv.specular = optix::make_float3(0);
     mv.emission = optix::make_float3(0);
     mv.shininess = 1;
+    mv.brdf = 0;
     defaultMv = mv;
 
     optix::float3 attenuation = optix::make_float3(1, 0, 0);
@@ -87,6 +88,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         else if (cmd == "maxdepth" && readValues(s, 1, fvalues))
         {
             config.maxDepth = (unsigned int)fvalues[0];
+            if (config.NEE == 1) config.maxDepth = (config.maxDepth <= 0) ? config.maxDepth : config.maxDepth - 1;
+            //else if (config.NEE == 2 && config.maxDepth < 2) config.maxDepth = 2;
         }
         else if (cmd == "output" && readValues(s, 1, svalues))
         {
@@ -97,22 +100,40 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             scene->integratorName = svalues[0];
         }
 	else if (cmd == "spp" && readValues(s, 1, fvalues)) {
-	    scene->spp = fvalues[0];
+	    config.SPP = fvalues[0];
 	}
 	else if (cmd == "nexteventestimation" && readValues(s, 1, svalues)) {
-	    scene->NEE = svalues[0]._Equal("on") ? true : false;
-        config.maxDepth--;
+	    if (svalues[0]._Equal("on")) {
+		config.NEE = 1;
+	    }
+	    else if (svalues[0]._Equal("mis")) {
+		config.NEE = 2;
+	    }
 	}
 	else if (cmd == "russianroulette" && readValues(s, 1, svalues)) {
-	    scene->RR = svalues[0]._Equal("on") ? true : false;
+	    config.RR = svalues[0]._Equal("on") ? true : false;
 	}
 	else if (cmd == "importancesampling" && readValues(s, 1, svalues)) {
-	    if (scene->IS = svalues[0]._Equal("hemisphere")) {
-		scene->IS = 0;
+	    if (svalues[0]._Equal("hemisphere")) {
+		config.IS = 0;
 	    }
 	    else if (svalues[0]._Equal("cosine")){
-		scene->IS = 1;
+		config.IS = 1;
 	    }
+	    else if (svalues[0]._Equal("brdf")){
+		config.IS = 2;
+	    }
+	}
+	else if (cmd == "brdf" && readValues(s, 1, svalues)) {
+	    if (svalues[0]._Equal("phong")) {
+		mv.brdf = 0;
+	    }
+	    else if (svalues[0]._Equal("ggx")){
+		mv.brdf = 1;
+	    }
+	}
+	else if (cmd == "gamma" && readValues(s, 1, fvalues)) {
+	    config.gamma = fvalues[0];
 	}
         else if (cmd == "camera" && readValues(s, 10, fvalues))
         {
@@ -218,6 +239,10 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         else if (cmd == "shininess" && readValues(s, 1, fvalues))
         {
             mv.shininess = fvalues[0];
+        }
+        else if (cmd == "roughness" && readValues(s, 1, fvalues))
+        {
+            mv.roughness = fvalues[0];
         }
         else if (cmd == "directional" && readValues(s, 6, fvalues))
         {

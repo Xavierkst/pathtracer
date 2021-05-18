@@ -53,21 +53,24 @@ RT_PROGRAM void generateRays()
         rtTrace(root, ray, payload);
 
         // Accumulate radiance
-        result += payload.radiance;
+        result += (cf.NEE == 2) ? payload.radiance*.5f : payload.radiance;
         //payload.radiance = make_float3(0.f);
 
         // Prepare to shoot next ray
         origin = payload.origin;
         dir = payload.dir;
-    } while (!payload.done && payload.depth != cf.maxDepth);
+    } while (!payload.done && payload.depth <= cf.maxDepth);
+    result = make_float3(powf(result.x,1/cf.gamma),
+			 powf(result.y,1/cf.gamma),
+			 powf(result.z,1/cf.gamma));
     
     if (frameID.x == 1) 
         resultBuffer[launchIndex] = result;
     else
     {
         float u = 1.0f / (float)frameID.x;
-        //float u = (2*M_PIf) / (float)frameID.x;
         float3 oldResult = resultBuffer[launchIndex];
-        resultBuffer[launchIndex] = lerp(oldResult, result, u);
+	float3 newResult = lerp(oldResult, result, u);
+        resultBuffer[launchIndex] = newResult;
     }
 }
