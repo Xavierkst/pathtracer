@@ -364,9 +364,8 @@ RT_PROGRAM void pathTracer() {
         w_i = normalize(reflect(-attrib.wo, h_sample));
     }
 
-
     // After selecting the correct w_i 
-    if (cf.next_event_est == ON || cf.next_event_est == MIS) {
+    if (cf.next_event_est) {
         // Add direct lighting here:
         for (int k = 0; k < qlights.size(); ++k) {
             float3 sampled_result = make_float3(.0f);
@@ -476,13 +475,13 @@ RT_PROGRAM void pathTracer() {
             float pdf_numerator = powf(pdf_NEE, exp_beta);
             float weight_i = pdf_numerator / pdf_denom_sum;
             
-            if (cf.next_event_est == MIS) {
+ /*           if (cf.next_event_est == MIS) {
                 L_d += qlights[k].color * sampled_result * (area / (float)light_samples) * (1.0f / pdf_NEE) * weight_i;
             }
-            else {
+            else {*/
                 // divide brdf by the pdf here
                 L_d += qlights[k].color * sampled_result * (area / (float)light_samples);
-            }
+            //}
         }
     }
 
@@ -555,42 +554,42 @@ RT_PROGRAM void pathTracer() {
                     // calculate pdf_NEE (we already have pdf brdf)
 
                     // loop thru all lights 
-                    //for (int k = 0; k < qlights.size(); ++k) {
-                    //    float3 sampled_result = make_float3(.0f);
-                    //    //float pdf_brdf = .0f;
-                    //    // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
-                    //    float3 a = qlights[k].tri1.v1;
-                    //    float3 b = qlights[k].tri1.v2;
-                    //    float3 c = qlights[k].tri2.v3;
-                    //    float3 d = qlights[k].tri2.v2;
+                    for (int k = 0; k < qlights.size(); ++k) {
+                        float3 sampled_result = make_float3(.0f);
+                        //float pdf_brdf = .0f;
+                        // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
+                        float3 a = qlights[k].tri1.v1;
+                        float3 b = qlights[k].tri1.v2;
+                        float3 c = qlights[k].tri2.v3;
+                        float3 d = qlights[k].tri2.v2;
 
-                    //    float3 ac = c - a;
-                    //    float3 ab = b - a;
-                    //    float area = length(cross(ab, ac));
+                        float3 ac = c - a;
+                        float3 ab = b - a;
+                        float area = length(cross(ab, ac));
 
 
-                    //    float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
-                    //    float3 shadow_ray_dir = w_i;
-                    //    // trace the ray and see if it hits a light source
-                    //    Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon, RT_DEFAULT_MAX);
-                    //    //float light_dist = length(sampled_light_pos - shadow_ray_origin);
+                        float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
+                        float3 shadow_ray_dir = w_i;
+                        // trace the ray and see if it hits a light source
+                        Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon, RT_DEFAULT_MAX);
+                        //float light_dist = length(sampled_light_pos - shadow_ray_origin);
 
-                    //    ShadowPayload shadow_payload;
-                    //    shadow_payload.isVisible = true;
-                    //    rtTrace(root, shadow_ray, shadow_payload);
+                        ShadowPayload shadow_payload;
+                        shadow_payload.isVisible = true;
+                        rtTrace(root, shadow_ray, shadow_payload);
 
-                    //    if (shadow_payload.isVisible && shadow_payload.objType == LIGHT) {
-                    //        float3 x_prime = shadow_payload.intersectPt;
-                    //        float3 x = shadow_ray_origin;
-                    //        float3 n_light = normalize(cross(ab, ac));
-                    //        float R = length(x - x_prime);
-                    //        //rtPrintf("here?..\n");
-                    //        pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i))));
-                    //    }
-                    //    else {
-                    //        pdf_lights_k += .0f;
-                    //    }
-                    //}
+                        if (shadow_payload.isVisible && shadow_payload.objType == LIGHT) {
+                            float3 x_prime = shadow_payload.intersectPt;
+                            float3 x = shadow_ray_origin;
+                            float3 n_light = normalize(cross(ab, ac));
+                            float R = length(x - x_prime);
+                            //rtPrintf("here?..\n");
+                            pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i))));
+                        }
+                        else {
+                            pdf_lights_k += .0f;
+                        }
+                    }
 
                 }
                 else f_brdf = make_float3(.0f); // assume f zero otherwise
@@ -601,13 +600,13 @@ RT_PROGRAM void pathTracer() {
             float pdf_numerator = powf(pdf, exp_beta);
             float pdf_denom_sum = powf(pdf_NEE_brdf + pdf, exp_beta);
             float weight_i_brdf = pdf_numerator / pdf_denom_sum;
-            //if (cf.next_event_est == MIS) {
-            //    addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf))/* * weight_i_brdf*/;
-            //}
-            //else {
-            //    addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
-            //}
-            addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
+            if (cf.next_event_est == MIS) {
+                addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf)) * weight_i_brdf;
+            }
+            else {
+                addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
+            }
+            //addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
             break;
         default:
             break;
