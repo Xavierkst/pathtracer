@@ -21,14 +21,6 @@ struct Scene
 
     unsigned int light_stratify;
 
-    unsigned int spp;
-
-    unsigned int IS;
-
-    bool NEE;
-
-    bool RR;
-
     std::vector<optix::float3> vertices;
 
     std::vector<Triangle> triangles;
@@ -44,7 +36,6 @@ struct Scene
         integratorName = "raytracer";
         light_stratify = 0;
         light_samples = 1;
-        spp = 1;
-        NEE = false;
+
     }
 };

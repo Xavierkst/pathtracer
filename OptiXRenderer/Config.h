@@ -11,6 +11,11 @@ struct Config
     // Ray tracing 
     unsigned int maxDepth;
     float epsilon;
+    float gamma;
+    unsigned int SPP;
+    unsigned int IS;
+    unsigned int NEE;
+    bool RR;
 
     Config()
     {
@@ -23,5 +28,10 @@ struct Config
 
         maxDepth = 5;
         epsilon = 0.0001f;
+        gamma = 1;
+        SPP = 1;
+        NEE = 0;
+        IS = 0;
+        RR = false;
     }
 };

@@ -131,7 +131,7 @@ void Renderer::buildScene()
     height = scene->height;
     outputFilename = scene->outputFilename;
     currentFrame = 0;
-    numFrames = scene->spp;
+    numFrames = config.SPP;
 
     // Set width and height
     resultBuffer->setSize(width, height);
@@ -159,10 +159,6 @@ void Renderer::buildScene()
     //programs["rayGen"]["spp"]->setUint(scene->spp);
     programs["integrator"]["light_stratify"]->setUint(scene->light_stratify);
     programs["integrator"]["light_samples"]->setUint(scene->light_samples);
-    programs["integrator"]["spp"]->setUint(scene->spp);
-    programs["integrator"]["NEE"]->setUint(scene->NEE);
-    programs["integrator"]["RR"]->setUint(scene->RR);
-    programs["integrator"]["IS"]->setUint(scene->IS);
 
     Material material = context->createMaterial();
     material->setClosestHitProgram(0, programs["integrator"]);
