@@ -18,4 +18,6 @@ struct Payload
 struct ShadowPayload
 {
     int isVisible;
+    objectType objType; 
+    float3 intersectPt;
 };

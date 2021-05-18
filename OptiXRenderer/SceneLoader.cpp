@@ -293,11 +293,15 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         }
 
         else if (cmd == "nexteventestimation" && readValues(s, 1, svalues)) {
+            // default is hemisphere sampling already
             if (svalues[0].compare("on") == 0) {
-                config.next_event_est = 1;
+                config.next_event_est = ON;
+            }
+            else if (svalues[0].compare("mis") == 0) {
+                config.next_event_est = MIS;
             }
             else {
-                config.next_event_est = 0;
+                config.next_event_est = OFF;
             }
         }
         else if (cmd == "russianroulette" && readValues(s, 1, svalues)) {
@@ -332,7 +336,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             // default is hemisphere sampling already
             config.gamma = fvalues[0];
         }
-
     }
 
     in.close();

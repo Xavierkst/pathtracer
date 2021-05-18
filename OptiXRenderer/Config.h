@@ -4,11 +4,14 @@
 
 enum sampling_type { HEMISPHERE_SAMPLING, COSINE_SAMPLING, BRDF_SAMPLING};
 
+enum nextEventEst { OFF, ON, MIS };
+
 struct Config
 {
     // Camera 
     optix::float3 w, u, v, eye; // w, u, v: orthonormal basis of camera; eye: eye location 
     optix::float2 hSize, tanHFov; // hSize: half size; tanHFov: tan of 0.5 * fov
+
     float gamma; 
     // Ray tracing 
     unsigned int maxDepth;

@@ -30,5 +30,7 @@ rtDeclareVariable(float1, t, rtIntersectionDistance, );
 RT_PROGRAM void anyHit()
 {
     shadowPayload.isVisible = false;
+    shadowPayload.objType = attrib.objType;
+    shadowPayload.intersectPt = attrib.intersection;
     rtTerminateRay();
 }
