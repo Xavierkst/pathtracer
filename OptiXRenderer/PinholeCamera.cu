@@ -53,13 +53,13 @@ RT_PROGRAM void generateRays()
         rtTrace(root, ray, payload);
 
         // Accumulate radiance
-        result += (cf.NEE == 2) ? payload.radiance*.5f : payload.radiance;
+        result += payload.radiance;
         //payload.radiance = make_float3(0.f);
 
         // Prepare to shoot next ray
         origin = payload.origin;
         dir = payload.dir;
-    } while (!payload.done && payload.depth <= cf.maxDepth);
+    } while (!payload.done && payload.depth != cf.maxDepth);
     result = make_float3(powf(result.x,1/cf.gamma),
 			 powf(result.y,1/cf.gamma),
 			 powf(result.z,1/cf.gamma));

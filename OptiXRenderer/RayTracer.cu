@@ -230,7 +230,6 @@ RT_PROGRAM void pathtracer() {
     Config cf = config[0];
 
     float pdf = 1.0f;
-    float pdf_i = 0.0f;
     float3 brdf = make_float3(0);
     float3 result = make_float3(0);
     float3 L_d = make_float3(0);
@@ -242,6 +241,8 @@ RT_PROGRAM void pathtracer() {
     float u1 = rnd(payload.seed);
     float u2 = rnd(payload.seed);
     float t = 0.0f;
+    float weight1 = 0.0f;
+    float weight2 = 0.0f;
 
     if (s_mean + d_mean == 0) {
 	if (mv.brdf == 1) t = 1.0f;
@@ -358,13 +359,15 @@ RT_PROGRAM void pathtracer() {
             break;
     }
 
+
     for (int k = 0; k < (cf.NEE ? qlights.size() : 0); ++k) {
         float3 sampled_result = make_float3(.0f);
         // Compute direct lighting equation for w_i_k/2 ray, for k = 1 to N*N
-        float3 a = qlights[k].tri1.v1;
-        float3 b = qlights[k].tri1.v2;
-        float3 c = qlights[k].tri2.v3;
-        float3 d = qlights[k].tri2.v2;
+	int whichLight = (k >= qlights.size()) ? k%qlights.size() : k;
+        float3 a = qlights[whichLight].tri1.v1;
+        float3 b = qlights[whichLight].tri1.v2;
+        float3 c = qlights[whichLight].tri2.v3;
+        float3 d = qlights[whichLight].tri2.v2;
 
         float3 ac = c - a;
         float3 ab = b - a;
@@ -383,6 +386,12 @@ RT_PROGRAM void pathtracer() {
                 else {
                     sampled_light_pos = a + u1 * ab + u2 * ac;
                 }
+		if (k >= qlights.size()) {
+		    float aDifferentT = dot(a - attrib.intersection, qlights[whichLight].tri1.normal) /
+		    dot(wi, qlights[whichLight].tri1.normal);
+		    sampled_light_pos = attrib.intersection + aDifferentT * wi;
+		}
+
                 float3 shadow_ray_origin = attrib.intersection; //+ attrib.normal * cf.epsilon;
                 float3 lightDir = normalize(sampled_light_pos - shadow_ray_origin);
                 float light_dist = length(sampled_light_pos - shadow_ray_origin);
@@ -395,10 +404,15 @@ RT_PROGRAM void pathtracer() {
 
                 if (shadow_payload.isVisible) {
                     // rendering equation here: 
+		    float3 brdf;
+		    float pdf;
 		    if (mv.brdf == 0) {
 			brdf = (mv.diffuse / M_PIf) +
 			    (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
                             powf(fmaxf(dot(normalize(reflect(-attrib.wo, attrib.normal)), lightDir), .0f), mv.shininess));
+			pdf = ((1.0f - t) * (fmaxf(dot(n, lightDir), .0f) / M_PIf)) + 
+				t * ((mv.shininess + 1.0f) / (2.0f * M_PIf)) * 
+				powf(fmaxf(dot(r, lightDir), .0f), mv.shininess);
 		    }
 		    if (mv.brdf == 1) {
 			float lightDir_dot_n = dot(lightDir, n);
@@ -424,6 +438,8 @@ RT_PROGRAM void pathtracer() {
 				       powf(1.0f - dot(lightDir, h), 5.0f);
 			    float3 f_brdf_GGX = (F * G * D) / (4.0f * lightDir_dot_n * wo_dot_n);
 			    brdf = (mv.diffuse / M_PIf) + f_brdf_GGX;
+			    pdf = fmaxf(((1 - t) * (lightDir_dot_n / M_PIf)) +
+			     ((t * D * dot(n, h)) / (4.0f * fmaxf(dot(h, lightDir),0.0f))),0.0f);
 
 		    }
 		    else brdf = make_float3(0.0f); // assume f zero otherwise
@@ -434,26 +450,35 @@ RT_PROGRAM void pathtracer() {
                     float3 n_light = normalize(cross(ab, ac));
 
                     float R = length(x - x_prime);
-
-		    if (cf.NEE == 2) {
-			pdf_i += (R*R)/(area*dot(n_light, lightDir));
-		    }
-		    else pdf_i = 1.0f;
-
-
+		    float pdf_nee;
 
                     // note: normal should point AWAY from the hitpoint, i.e. dot(n_light, x - x_prime) < 0
                     float G = (1.0f / powf(R, 2.0f)) *
 		    fmaxf(dot(n, normalize(x_prime - x)), .0f) *
 		    (fmaxf(dot(n_light, normalize(x_prime - x)), .0f));
 
-		    sampled_result += (powf(pdf_i,2.0f)/powf(pdf + pdf_i, 0.2f))* brdf * G * (1.0f/pdf_i);
+		    if (cf.NEE == 2 && k < qlights.size() ) {
+			pdf_nee = (R*R)/(area*dot(n_light, lightDir))/qlights.size();
+			weight1 = powf(pdf_nee,2.0f)/(powf(pdf_nee,2.0f) + powf(pdf,2.0f));
+			sampled_result += weight1 * brdf * G * (1.0f/pdf_nee);
+		    }
+		    else if (cf.NEE == 2) {
+			pdf_nee = (R*R)/(area*dot(n_light, lightDir))/qlights.size();
+			weight2 += powf(pdf_nee,2.0f);
+			sampled_result = make_float3(0);
+		    }
+		    else {
+			sampled_result += brdf * G;
+		    }
+
                 }
             }
         }
-        L_d += qlights[k].color * sampled_result * (area / (float)light_samples);
+        L_d += qlights[whichLight].color * sampled_result * (area / (float)light_samples);
     }
 
+    weight2 = powf(pdf,2.0f)/(weight2 + powf(pdf,2.0f));
+    bruh *= weight2;
 
     if (cf.NEE && (payload.depth == 0)) {
         result += L_e;
@@ -461,7 +486,7 @@ RT_PROGRAM void pathtracer() {
     }
     else {
 	if (cf.NEE == 2) {
-	    result += L_e * (powf(pdf,2.0f)/powf(pdf + pdf_i, 0.2f));
+	    result += L_e;
 	}
         if (cf.NEE) {
 	    result += L_d;
