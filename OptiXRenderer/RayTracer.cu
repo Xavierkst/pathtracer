@@ -269,9 +269,9 @@ RT_PROGRAM void pathTracer() {
     if ((K_s_avg == .0f) && (K_d_avg == .0f)) {
         //rtPrintf("heeeere\n");
         // if denom is 0, t is 0 when brdf is modified phong, and 1 for ggx
-        if (mv.brdf_type == MOD_PHONG) 
+        if (mv.brdf_type == MOD_PHONG)
             t = .0f;
-        else if (mv.brdf_type == GGX) 
+        else if (mv.brdf_type == GGX)
             t = 1.0f;
     }
     else {
@@ -296,33 +296,33 @@ RT_PROGRAM void pathTracer() {
     float theta = .0f;
     float phi = .0f;
     switch (sampling_method) {
-        case HEMISPHERE_SAMPLING: 
-            //rtPrintf("hemisphere here\n");
-            phi = 2.0f * M_PIf * zeta_2;
-            theta = acosf(zeta_1);
-            break;
-        case COSINE_SAMPLING: 
-            //rtPrintf("cosine here\n");
-            phi = 2.0f * M_PIf * zeta_2;
-            theta = acosf(sqrtf(zeta_1));
-            break;
-        case BRDF_SAMPLING: 
-            //rtPrintf("brdf here\n");
-            // phi remains the same for either specular or diffuse pdf
-            phi = 2.0f * M_PIf * zeta_2;
-            if (zeta_0 > t) 
-                theta = acosf(sqrtf(zeta_1)); // theta_diffuse
-            else 
-                theta = acosf(powf(zeta_1, (1.0f / (mv.shininess + 1.0f)))); // theta_specular
-            break;
-        default: 
-            break;
+    case HEMISPHERE_SAMPLING:
+        //rtPrintf("hemisphere here\n");
+        phi = 2.0f * M_PIf * zeta_2;
+        theta = acosf(zeta_1);
+        break;
+    case COSINE_SAMPLING:
+        //rtPrintf("cosine here\n");
+        phi = 2.0f * M_PIf * zeta_2;
+        theta = acosf(sqrtf(zeta_1));
+        break;
+    case BRDF_SAMPLING:
+        //rtPrintf("brdf here\n");
+        // phi remains the same for either specular or diffuse pdf
+        phi = 2.0f * M_PIf * zeta_2;
+        if (zeta_0 > t)
+            theta = acosf(sqrtf(zeta_1)); // theta_diffuse
+        else
+            theta = acosf(powf(zeta_1, (1.0f / (mv.shininess + 1.0f)))); // theta_specular
+        break;
+    default:
     }
 
     // qn: why rotate s wrt the z-axis? and not the y-axis?
     float3 sample_s = make_float3(cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
-    
+
     // generate coordinate frame at the intersect point
+    //float3 n = normalize(attrib.normal);
     float3 w = n;
     // if specular brdf chosen, center sample_s at reflection vector r
     if ((zeta_0 <= t) && (sampling_method == BRDF_SAMPLING)) w = r;
@@ -341,38 +341,38 @@ RT_PROGRAM void pathTracer() {
 
     float theta_h_sample = atanf((mv.roughness * sqrtf(zeta_1)) / sqrtf(1.0f - zeta_1));
     float phi_h_sample = 2.0f * M_PIf * zeta_2;
-    float3 h_sample = make_float3(cosf(phi_h_sample) * sinf(theta_h_sample), 
-        sinf(phi_h_sample)*sinf(theta_h_sample), 
-            cosf(theta_h_sample));
+    float3 h_sample = make_float3(cosf(phi_h_sample) * sinf(theta_h_sample),
+        sinf(phi_h_sample) * sinf(theta_h_sample),
+        cosf(theta_h_sample));
 
-    float3 w_h = n; 
-    float3 a_h = make_float3(.0f, 1.0f, .0f); 
+    float3 w_h = n;
+    float3 a_h = make_float3(.0f, 1.0f, .0f);
     if (1.0f - fabsf(dot(a_h, w_h)) <= 1.0f) {
         a_h = make_float3(1.0f, .0f, .0f);
     }
-    
-    float3 u_h = normalize(cross(a_h, w_h)); 
+
+    float3 u_h = normalize(cross(a_h, w_h));
     float3 v_h = normalize(cross(w_h, u_h));
 
     // rotate h:
-    float3 w_i = make_float3(.0f); 
+    float3 w_i = make_float3(.0f);
     // get randomized new ray dir -- choose a sampling method
-    if (mv.brdf_type == MOD_PHONG) 
+    if (mv.brdf_type == MOD_PHONG)
         w_i = normalize((sample_s.x * u + sample_s.y * v + sample_s.z * w));
     else {
         h_sample = (h_sample.x * u_h + h_sample.y * v_h + h_sample.z * w_h);
         w_i = normalize(reflect(-attrib.wo, h_sample));
     }
 
-
-    // After selecting the correct w_i 
-    if (cf.next_event_est == ON || cf.next_event_est == MIS) {
+    if (cf.next_event_est) {
         // Add direct lighting here:
         for (int k = 0; k < qlights.size(); ++k) {
             float3 sampled_result = make_float3(.0f);
             float pdf_lights_k = .0f;
             float pdf_brdf = .0f;
-
+            float3 w_i_dir = make_float3(.0f);
+            float3 h = make_float3(.0f);
+            float D = .0f;
             // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
             float3 a = qlights[k].tri1.v1;
             float3 b = qlights[k].tri1.v2;
@@ -382,11 +382,7 @@ RT_PROGRAM void pathTracer() {
             float3 ac = c - a;
             float3 ab = b - a;
             float area = length(cross(ab, ac));
-
-            float D = .0f;
-            float3 h = make_float3(.0f);
-            float3 w_i_dir = make_float3(.0f);
-
+            int root_light_samples = (int)sqrtf(light_samples);
             // check if stratify or random sampling
             // double for loop here 
             for (int i = 0; i < root_light_samples; ++i) {
@@ -414,29 +410,32 @@ RT_PROGRAM void pathTracer() {
                     rtTrace(root, shadow_ray, shadow_payload);
 
                     if (shadow_payload.isVisible) {
+                        //float D = .0f;
+
                         // rendering equation here: 
                         //float3 w_i = sampled_light_pos;
-                        w_i_dir = normalize(sampled_light_pos - shadow_ray_origin); 
-                        float3 f_brdf = make_float3(.0f);
-                        h = normalize(w_i_dir + attrib.wo); // half angle: 
-                        float theta_h = acosf(dot(h, n)); // not sure if need to clamp 0
-                        float alpha = mv.roughness;
-                        float cos_theta_h_4 = powf(cosf(theta_h), 4.0f);
-                        float alpha_tan_theta_h_sq = (alpha * alpha) + powf(tanf(theta_h), 2.0f);
+                        w_i_dir = normalize(sampled_light_pos - shadow_ray_origin);
 
+                        float3 f_brdf = make_float3(.0f);
                         if (mv.brdf_type == MOD_PHONG) {
                             f_brdf = (mv.diffuse / M_PIf) +
-                            (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                                powf(fmaxf(dot(r, w_i_dir), .0f), mv.shininess));
+                                (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+                                    powf(fmaxf(dot(r, w_i_dir), .0f), mv.shininess));
                         }
                         else {
-                            float wi_dot_n_dir = dot(w_i_dir, n); 
-                            float wo_dot_n_dir = dot(attrib.wo, n); 
+                            float wi_dot_n_dir = dot(w_i_dir, n);
+                            float wo_dot_n_dir = dot(attrib.wo, n);
                             if (wi_dot_n_dir > .0f && wo_dot_n_dir > .0f) {
-                                // microfacet distribution function, D: 
+                                float alpha = mv.roughness;
+                                float3 h = normalize(w_i_dir + attrib.wo); // half angle: 
+                                float theta_h = acosf(dot(h, n)); // not sure if need to clamp 0
+                                float cos_theta_h_4 = powf(cosf(theta_h), 4.0f);
+                                float alpha_tan_theta_h_sq = (alpha * alpha) + powf(tanf(theta_h), 2.0f);
                                 // make sure denom not 0, else set D to 0
-                                if (cos_theta_h_4 * alpha_tan_theta_h_sq != .0f)
-                                    D = (alpha * alpha) / (M_PIf * cos_theta_h_4 * powf(alpha_tan_theta_h_sq, 2.0f));
+                                if (cos_theta_h_4 * alpha_tan_theta_h_sq != .0f) D = (alpha * alpha) / (M_PIf * cos_theta_h_4 * powf(alpha_tan_theta_h_sq, 2.0f));
+
+                                // microfacet distribution function, D: 
+                                //float D = (alpha * alpha) / (M_PIf * powf(cosf(theta_h), 4.0f) * powf((alpha * alpha) + powf(tanf(theta_h), 2.0f), 2.0f));
 
                                 // shadow-masking function, G:  
                                 float G_1_wi = (wi_dot_n_dir > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tanf(acosf(dot(w_i_dir, n))), 2.0f))) : .0f;
@@ -452,6 +451,7 @@ RT_PROGRAM void pathTracer() {
 
                         float3 x_prime = sampled_light_pos;
                         float3 x = shadow_ray_origin;
+                        float3 n = attrib.normal;
                         float3 n_light = normalize(cross(ab, ac));
 
                         float R = length(x - x_prime);
@@ -466,17 +466,18 @@ RT_PROGRAM void pathTracer() {
                 }
             }
             // calculate weight Wi for this given w_i generated
-            pdf_NEE = pdf_lights_k/* * (1.0f / (float) qlights.size())*/;
+            pdf_NEE = pdf_lights_k /** (1.0f / (float) qlights.size())*/;
 
-            // calculate pdf_brdf for  
+            // calculate pdf_brdf 
             pdf_brdf = ((1.0f - t) * fmaxf(dot(n, w_i_dir), .0f) / M_PIf) + ((t * D * dot(n, h)) / (4.0f * dot(h, w_i_dir)));
-             
+         
             // calc power heuristic: 
             float pdf_denom_sum = powf(pdf_NEE, exp_beta) + powf(pdf_brdf, exp_beta);
             float pdf_numerator = powf(pdf_NEE, exp_beta);
             float weight_i = pdf_numerator / pdf_denom_sum;
-            
+        
             if (cf.next_event_est == MIS) {
+                //rtPrintf("here");
                 L_d += qlights[k].color * sampled_result * (area / (float)light_samples) * (1.0f / pdf_NEE) * weight_i;
             }
             else {
@@ -486,136 +487,124 @@ RT_PROGRAM void pathTracer() {
         }
     }
 
-
-    // calculate the summation of all pdfs here (i.e. pdf_nee + pdf_brdf)
-    // using h, w_i, 
-    
     // the BRDF 
     float3 f_brdf = make_float3(0.0f);
-    float pdf = 0.0f;
+    float pdf = 1.0f;
     float3 addon_throughput = make_float3(.0f);
-    float pdf_NEE_brdf = .0f;
 
     switch (sampling_method) {
-        case HEMISPHERE_SAMPLING: 
-            //rtPrintf("hemisphere here");
-            f_brdf = (mv.diffuse / M_PIf) +
-                (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+    case HEMISPHERE_SAMPLING:
+        //rtPrintf("hemisphere here");
+        f_brdf = (mv.diffuse / M_PIf) +
+            (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+                powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
+        pdf = 1.0f / (2.0f * M_PIf);
+        addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
+        break;
+    case COSINE_SAMPLING:
+        //rtPrintf("cosine here");
+        f_brdf = (mv.diffuse / M_PIf) +
+            (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+                powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
+        pdf = fmaxf(dot(n, w_i), .0f) / (M_PIf);
+        addon_throughput = (f_brdf)*fmaxf(dot(n, w_i), .0f) * (1.0f / pdf);
+        break;
+    case BRDF_SAMPLING:
+        float pdf_NEE_brdf = .0f;
+        //rtPrintf("brdf here");
+        // check the material whether to use mod-phong or GGX brdf
+        if (mv.brdf_type == MOD_PHONG) {
+            f_brdf = (K_d / M_PIf) +
+                (K_s * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
                     powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
-            pdf = 1.0f / (2.0f * M_PIf);
-            addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf)) ;
-            break;
-        case COSINE_SAMPLING: 
-            //rtPrintf("cosine here");
-            f_brdf = (mv.diffuse / M_PIf) +
-                (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                    powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
-            pdf = fmaxf(dot(n, w_i), .0f) / (M_PIf);
-            addon_throughput = (f_brdf) * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf);
-            break;
-        case BRDF_SAMPLING: 
-            //rtPrintf("brdf here");
-            // check the material whether to use mod-phong or GGX brdf
-            if (mv.brdf_type == MOD_PHONG) {
-                f_brdf = (K_d / M_PIf) +
-                    (K_s * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                        powf(fmaxf(dot(r, w_i), .0f), mv.shininess));
 
-                pdf = ((1.0f - t) * (dot(n, w_i) / M_PIf)) + 
-                    t * ((mv.shininess + 1.0f) / (2.0f * M_PIf)) * 
-                        powf(fmaxf(dot(r, w_i), .0f), mv.shininess);
-            }
-            else {
-                // construct GGX BRDF: 
-                float pdf_lights_k = .0f;
+            pdf = ((1.0f - t) * (dot(n, w_i) / M_PIf)) +
+                t * ((mv.shininess + 1.0f) / (2.0f * M_PIf)) *
+                powf(fmaxf(dot(r, w_i), .0f), mv.shininess);
+        }
+        else {
+            // construct GGX BRDF: 
+            float pdf_lights_k = .0f;
 
-                float wi_dot_n = dot(w_i, n); 
-                float wo_dot_n = dot(attrib.wo, n); 
-                if (wi_dot_n > .0f && wo_dot_n > .0f) {
-                    float alpha = mv.roughness;
-                    float3 h = normalize(w_i + attrib.wo); // half angle: 
-                    float theta_h = acosf(dot(h, n)); // not sure if need to clamp 0
-                    // microfacet distribution function, D: 
-                    float cos_theta_h_4 = powf(cosf(theta_h), 4.0f);
-                    float alpha_tan_theta_h_sq = (alpha * alpha) + powf(tanf(theta_h), 2.0f);
-                    float D = .0f;
-                    // make sure denom not 0, else set D to 0
-                    if (cos_theta_h_4 * alpha_tan_theta_h_sq != .0f) D = (alpha * alpha) / (M_PIf * cos_theta_h_4 * powf(alpha_tan_theta_h_sq, 2.0f));
-                        //D = (alpha * alpha) / (M_PIf * powf(cosf(theta_h), 4.0f) * powf(alpha_tan_theta_h_sq, 2.0f));
-                    // shadow-masking function, G:  
-                    float G_1_wi = (wi_dot_n > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tanf(acosf(dot(w_i, n))), 2.0f))) : .0f;
-                    float G_1_wo = (wo_dot_n > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tan(acosf(dot(attrib.wo, n))), 2.0f))) : .0f;
-                    float G = G_1_wi * G_1_wo;
-                    // fresnel function, F:
-                    float3 F = K_s + (1.0f - K_s) * powf(1.0f - fmaxf(dot(w_i, h), .0f), 5.0f);
-                    float3 f_brdf_GGX = (F * G * D) / (4.0f * wi_dot_n * wo_dot_n);
-                    f_brdf = (K_d / M_PIf) + f_brdf_GGX;
-                    pdf = ((1.0f - t) * fmaxf(dot(n, w_i), .0f) / M_PIf) + ((t * D * dot(n, h)) / (4.0f * dot(h, w_i)));
+            float wi_dot_n = dot(w_i, n);
+            float wo_dot_n = dot(attrib.wo, n);
+            if (wi_dot_n > .0f && wo_dot_n > .0f) {
+                float alpha = mv.roughness;
+                float3 h = normalize(w_i + attrib.wo); // half angle: 
+                float theta_h = acosf(dot(h, n)); // not sure if need to clamp 0
+                // microfacet distribution function, D: 
+                float cos_theta_h_4 = powf(cosf(theta_h), 4.0f);
+                float alpha_tan_theta_h_sq = (alpha * alpha) + powf(tanf(theta_h), 2.0f);
+                float D = .0f;
+                // make sure denom not 0, else set D to 0
+                if (cos_theta_h_4 * alpha_tan_theta_h_sq != .0f) D = (alpha * alpha) / (M_PIf * cos_theta_h_4 * powf(alpha_tan_theta_h_sq, 2.0f));
+                //D = (alpha * alpha) / (M_PIf * powf(cosf(theta_h), 4.0f) * powf(alpha_tan_theta_h_sq, 2.0f));
+            // shadow-masking function, G:  
+                float G_1_wi = (wi_dot_n > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tanf(acosf(dot(w_i, n))), 2.0f))) : .0f;
+                float G_1_wo = (wo_dot_n > .0f) ? 2.0f / (1.0f + sqrtf(1.0f + (alpha * alpha) * powf(tan(acosf(dot(attrib.wo, n))), 2.0f))) : .0f;
+                float G = G_1_wi * G_1_wo;
+                // fresnel function, F:
+                float3 F = K_s + (1.0f - K_s) * powf(1.0f - fmaxf(dot(w_i, h), .0f), 5.0f);
+                float3 f_brdf_GGX = (F * G * D) / (4.0f * wi_dot_n * wo_dot_n);
+                f_brdf = (K_d / M_PIf) + f_brdf_GGX;
+                pdf = ((1.0f - t) * fmaxf(dot(n, w_i), .0f) / M_PIf) + ((t * D * dot(n, h)) / (4.0f * dot(h, w_i)));
 
-                    // calculate pdf_NEE (we already have pdf brdf)
+                for (int k = 0; k < qlights.size(); ++k) {
+                    //float3 sampled_result = make_float3(.0f);
+                    float pdf_brdf = .0f;
+                    // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
+                    float3 a = qlights[k].tri1.v1;
+                    float3 b = qlights[k].tri1.v2;
+                    float3 c = qlights[k].tri2.v3;
+                    float3 d = qlights[k].tri2.v2;
 
-                    // loop thru all lights 
-                    //for (int k = 0; k < qlights.size(); ++k) {
-                    //    float3 sampled_result = make_float3(.0f);
-                    //    //float pdf_brdf = .0f;
-                    //    // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
-                    //    float3 a = qlights[k].tri1.v1;
-                    //    float3 b = qlights[k].tri1.v2;
-                    //    float3 c = qlights[k].tri2.v3;
-                    //    float3 d = qlights[k].tri2.v2;
-
-                    //    float3 ac = c - a;
-                    //    float3 ab = b - a;
-                    //    float area = length(cross(ab, ac));
+                    float3 ac = c - a;
+                    float3 ab = b - a;
+                    float area = length(cross(ab, ac));
 
 
-                    //    float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
-                    //    float3 shadow_ray_dir = w_i;
-                    //    // trace the ray and see if it hits a light source
-                    //    Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon, RT_DEFAULT_MAX);
-                    //    //float light_dist = length(sampled_light_pos - shadow_ray_origin);
+                    float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
+                    float3 shadow_ray_dir = w_i;
+                    // trace the ray and see if it hits a light source
+                    Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon, RT_DEFAULT_MAX);
+                    //float light_dist = length(sampled_light_pos - shadow_ray_origin);
 
-                    //    ShadowPayload shadow_payload;
-                    //    shadow_payload.isVisible = true;
-                    //    rtTrace(root, shadow_ray, shadow_payload);
+                    ShadowPayload shadow_payload;
+                    shadow_payload.isVisible = true;
+                    rtTrace(root, shadow_ray, shadow_payload);
 
-                    //    if (shadow_payload.isVisible && shadow_payload.objType == LIGHT) {
-                    //        float3 x_prime = shadow_payload.intersectPt;
-                    //        float3 x = shadow_ray_origin;
-                    //        float3 n_light = normalize(cross(ab, ac));
-                    //        float R = length(x - x_prime);
-                    //        //rtPrintf("here?..\n");
-                    //        pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i))));
-                    //    }
-                    //    else {
-                    //        pdf_lights_k += .0f;
-                    //    }
-                    //}
+                    if (!shadow_payload.isVisible && shadow_payload.objType == LIGHT) {
+                        float3 x_prime = shadow_payload.intersectPt;
+                        float3 x = shadow_ray_origin;
+                        float3 n_light = normalize(cross(ab, ac));
+                        float R = length(x - x_prime);
 
+                        pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i))));
+                    }
+                    /*else {
+                        pdf_lights_k += .0f;
+                    }*/
                 }
-                else f_brdf = make_float3(.0f); // assume f zero otherwise
 
-                pdf_NEE_brdf = /*(1.0f / qlights.size()) **/ pdf_lights_k;
             }
+            else f_brdf = make_float3(.0f); // assume f zero otherwise
+            pdf_NEE_brdf = /*(1.0f / qlights.size()) **/ pdf_lights_k;
+        }
 
-            float pdf_numerator = powf(pdf, exp_beta);
-            float pdf_denom_sum = powf(pdf_NEE_brdf + pdf, exp_beta);
-            float weight_i_brdf = pdf_numerator / pdf_denom_sum;
-            //if (cf.next_event_est == MIS) {
-            //    addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf))/* * weight_i_brdf*/;
-            //}
-            //else {
-            //    addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
-            //}
+        float pdf_denom_sum = powf(pdf_NEE_brdf, exp_beta) + powf(pdf, exp_beta);
+        float pdf_numerator = powf(pdf, exp_beta);
+        float weight_i_brdf = pdf_numerator / pdf_denom_sum;
+
+        if (cf.next_event_est == MIS) {
+            addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf) * weight_i_brdf);
+        }
+        else {
             addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
-            break;
-        default:
-            break;
+        }
+        break;
+    default:
     }
 
-    // addon_throughput holds f(x_i)/pdf(x_i) for BRDF impt sample
-    // L_d holds f(x_i)/pdf(x_i) for NEE sample
-    // we can compute weights for each separately and weight them in here: (don't forget to include power heuristic)
 
     // Check if its first intersected surface
     if (cf.next_event_est && (payload.depth == 0)) {
