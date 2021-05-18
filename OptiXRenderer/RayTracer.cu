@@ -241,8 +241,6 @@ RT_PROGRAM void pathtracer() {
     float u1 = rnd(payload.seed);
     float u2 = rnd(payload.seed);
     float t = 0.0f;
-    float weight1 = 0.0f;
-    float weight2 = 0.0f;
 
     if (s_mean + d_mean == 0) {
 	if (mv.brdf == 1) t = 1.0f;
@@ -355,13 +353,14 @@ RT_PROGRAM void pathtracer() {
                 }
                 else brdf = make_float3(0.0f); // assume f zero otherwise
             }
-            bruh = (brdf*fmaxf(dot(n,wi),0) * (1.0f / pdf));
+            bruh = (brdf * fmaxf(dot(n,wi),0) * (1.0f / pdf));
             break;
     }
 
 
-    for (int k = 0; k < (cf.NEE ? qlights.size() : 0); ++k) {
+    for (int k = 0; k < (cf.NEE ? qlights.size()*cf.NEE : 0); ++k) {
         float3 sampled_result = make_float3(.0f);
+	float3 brdf_cum = make_float3(0);
         // Compute direct lighting equation for w_i_k/2 ray, for k = 1 to N*N
 	int whichLight = (k >= qlights.size()) ? k%qlights.size() : k;
         float3 a = qlights[whichLight].tri1.v1;
@@ -369,8 +368,8 @@ RT_PROGRAM void pathtracer() {
         float3 c = qlights[whichLight].tri2.v3;
         float3 d = qlights[whichLight].tri2.v2;
 
-        float3 ac = c - a;
-        float3 ab = b - a;
+        float3 ac = c - a + cf.epsilon;
+        float3 ab = b - a + cf.epsilon;
         float area = length(cross(ab, ac));
         int root_light_samples = (int)sqrtf(light_samples);
         // check if stratify or random sampling
@@ -378,7 +377,7 @@ RT_PROGRAM void pathtracer() {
         for (int i = 0; i < root_light_samples; ++i) {
             for (int j = 0; j < root_light_samples; ++j) {
 
-                float3 sampled_light_pos;
+                float3 sampled_light_pos = make_float3(0);
                 if (light_stratify) {
                     sampled_light_pos = a + ((j + u1) * (ab / (float)root_light_samples)) +
                         ((i + u2) * (ac / (float)root_light_samples));
@@ -386,19 +385,53 @@ RT_PROGRAM void pathtracer() {
                 else {
                     sampled_light_pos = a + u1 * ab + u2 * ac;
                 }
-		if (k >= qlights.size()) {
-		    float aDifferentT = dot(a - attrib.intersection, qlights[whichLight].tri1.normal) /
-		    dot(wi, qlights[whichLight].tri1.normal);
-		    sampled_light_pos = attrib.intersection + aDifferentT * wi;
-		}
 
                 float3 shadow_ray_origin = attrib.intersection; //+ attrib.normal * cf.epsilon;
                 float3 lightDir = normalize(sampled_light_pos - shadow_ray_origin);
                 float light_dist = length(sampled_light_pos - shadow_ray_origin);
-                Ray shadow_ray = make_Ray(shadow_ray_origin, lightDir, 1, cf.epsilon, light_dist - cf.epsilon);
-
                 ShadowPayload shadow_payload;
                 shadow_payload.isVisible = true;
+
+		if (k >= qlights.size()) {
+
+		    for (int poggers = 0; poggers < 2; poggers++) {
+
+			Triangle tri = poggers ? qlights[whichLight].tri1 : qlights[whichLight].tri2;
+
+			float nDotWo = dot(tri.normal, -wi);
+
+			float t = dot(tri.v1 - attrib.intersection, tri.normal) / dot(wi, tri.normal);
+			float3 P = attrib.intersection + t * wi; // intersection in the object space
+
+			float3 tmp0 = tri.v3 - tri.v1;
+			float3 tmp1 = tri.v2 - tri.v1;
+			float3 tmp2 = P - tri.v1;
+			float tmp0dot0 = dot(tmp0, tmp0);
+			float tmp0dot1 = dot(tmp0, tmp1);
+			float tmp0dot2 = dot(tmp0, tmp2);
+			float tmp1dot1 = dot(tmp1, tmp1);
+			float tmp1dot2 = dot(tmp1, tmp2);
+			float denom = tmp0dot0 * tmp1dot1 - tmp0dot1 * tmp0dot1;
+
+			float u = (tmp1dot1 * tmp0dot2 - tmp0dot1 * tmp1dot2) / denom;
+			float v = (tmp0dot0 * tmp1dot2 - tmp0dot1 * tmp0dot2) / denom;
+
+			if (!(0 > u || u > 1 || 0 > v || v > 1 || u + v > 1 || nDotWo == 0.0f || t < 0.001)) {
+			    lightDir = wi;
+			    light_dist = t;
+			    sampled_light_pos = P;
+			    shadow_payload.isVisible = true;
+			    break;
+			}
+			else {
+			    shadow_payload.isVisible = false;
+			}
+		    }
+		}
+		if (!shadow_payload.isVisible) continue;
+
+                Ray shadow_ray = make_Ray(shadow_ray_origin, lightDir, 1, cf.epsilon, light_dist - cf.epsilon);
+
                 rtTrace(root, shadow_ray, shadow_payload);
                 float3 n = attrib.normal;
 
@@ -459,13 +492,20 @@ RT_PROGRAM void pathtracer() {
 
 		    if (cf.NEE == 2 && k < qlights.size() ) {
 			pdf_nee = (R*R)/(area*dot(n_light, lightDir))/qlights.size();
-			weight1 = powf(pdf_nee,2.0f)/(powf(pdf_nee,2.0f) + powf(pdf,2.0f));
-			sampled_result += weight1 * brdf * G * (1.0f/pdf_nee);
+			float weight = powf(pdf_nee,2.0f)/(powf(pdf_nee,2.0f) + powf(pdf,2.0f));
+			sampled_result = weight * brdf * G * (1.0f/pdf_nee);
+			weight = powf(pdf,2.0f)/(powf(pdf_nee,2.0f) + powf(pdf,2.0f));
+			sampled_result += weight * brdf * G * (1.0f/pdf);
+			sampled_result = sampled_result*100;
+			//sampled_result = sampled_result/2;
 		    }
 		    else if (cf.NEE == 2) {
 			pdf_nee = (R*R)/(area*dot(n_light, lightDir))/qlights.size();
-			weight2 += powf(pdf_nee,2.0f);
-			sampled_result = make_float3(0);
+			float weight = powf(pdf_nee,2.0f)/(powf(pdf_nee,2.0f) + powf(pdf,2.0f));
+			sampled_result += weight * brdf * fmaxf(dot(n,wi),0) * (1.0f/pdf_nee);
+			weight = powf(pdf,2.0f)/(powf(pdf_nee,2.0f) + powf(pdf,2.0f));
+			sampled_result += weight * brdf * fmaxf(dot(n,wi),0) * (1.0f/pdf);
+			//sampled_result = sampled_result/2;
 		    }
 		    else {
 			sampled_result += brdf * G;
@@ -477,9 +517,8 @@ RT_PROGRAM void pathtracer() {
         L_d += qlights[whichLight].color * sampled_result * (area / (float)light_samples);
     }
 
-    weight2 = powf(pdf,2.0f)/(weight2 + powf(pdf,2.0f));
-    bruh *= weight2;
 
+    
     if (cf.NEE && (payload.depth == 0)) {
         result += L_e;
         payload.radiance = (cf.NEE == 1 ? result + L_d : L_d) * payload.throughput;
