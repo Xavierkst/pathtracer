@@ -44,8 +44,6 @@ RT_PROGRAM void generateRays()
 
     //if (cf.next_event_est) cf.maxDepth--;
 
-    //rtPrintf("depth is: %d\n", cf.maxDepth); 
-    //rtPrintf("spp is: %d\n", samples_per_pixel); 
     // Iteratively trace rays (recursion is very expensive on GPU)
     for (int j = 0; j < samples_per_pixel; ++j) {
         // Prepare new payload for each sample
