@@ -11,12 +11,16 @@ enum objectType { OBJECT, LIGHT };
 
 enum brdfType { MOD_PHONG, GGX, VOLUMETRIC };
 
+enum materialType { DIFFUSE, GLASS };
 
 struct MaterialValue
 {
     optix::float3 ambient, diffuse, specular, emission;
     float shininess, roughness;
-    brdfType brdf_type;
+    brdfType brdf_type;    
+    float ior;
+    materialType matType;
+
 };
 
 struct Triangle
@@ -24,7 +28,6 @@ struct Triangle
     optix::float3 v1, v2, v3, normal; // transformed
     MaterialValue mv;
     objectType objType;
-    float ior;
 };
 
 struct Sphere
@@ -32,7 +35,6 @@ struct Sphere
     optix::Matrix4x4 trans;
     MaterialValue mv;
     objectType objType;
-    float ior;
 };
 
 struct Attributes

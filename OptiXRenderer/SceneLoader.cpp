@@ -55,8 +55,11 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     mv.roughness = 1.0f;
     // by default, geoms use Mod phong brdf
     mv.brdf_type = MOD_PHONG; 
+    mv.ior = 1.0f;
+    mv.matType = DIFFUSE;
     defaultMv = mv;
-    float curr_ior = 1.0f;
+    //float curr_ior = 1.0f;
+    //materialType material_type = DIFFUSE;
 
     optix::float3 attenuation = optix::make_float3(1, 0, 0);
 
@@ -115,7 +118,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         else if (cmd == "sphere" && readValues(s, 4, fvalues))
         {
             Sphere sphere;
-            sphere.ior = curr_ior;
+            //sphere.ior = curr_ior;
             sphere.trans = transStack.top();
             sphere.trans *= optix::Matrix4x4::translate(
                 optix::make_float3(fvalues[0], fvalues[1], fvalues[2]));
@@ -139,7 +142,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         {
             Triangle tri;
             optix::Matrix4x4 trans = transStack.top();
-            tri.ior = curr_ior;
+            //tri.ior = curr_ior;
             tri.v1 = transformPoint(scene->vertices[ivalues[0]]);
             tri.v2 = transformPoint(scene->vertices[ivalues[1]]);
             tri.v3 = transformPoint(scene->vertices[ivalues[2]]);
@@ -248,7 +251,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
 
             // A quad made up of 2 triangles
             Triangle tri1;    // a-b-c
-            tri1.ior = 1.0f;
+            //tri1.ior = 1.0f;
+            //tri1.matType = material_type;
             tri1.v1 = a;      // edge a
             tri1.v2 = a + ab; // edge b
             tri1.v3 = a + ac; // edge c
@@ -259,7 +263,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri1.normal = optix::cross(ab, ac); 
 
             Triangle tri2;          // b-d-c
-            tri2.ior = 1.0f;
+            //tri2.ior = 1.0f;
+            //tri2.matType = material_type;
             tri2.v1 = a + ab;       // edge b
             tri2.v2 = a + ab + ac;  // edge d
             tri2.v3 = a + ac;       // edge c
@@ -349,7 +354,17 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
 
         else if (cmd == "ior" && readValues(s, 1, fvalues)) {
             // default is hemisphere sampling already
-            curr_ior = fvalues[0];
+            mv.ior = fvalues[0];
+        }
+
+        else if (cmd == "materialtype" && readValues(s, 1, svalues)) {
+            // default is hemisphere sampling already
+            if (svalues[0].compare("glass") == 0) {
+                mv.matType = GLASS;
+            }
+            else if (svalues[0].compare("diffuse") == 0) {
+                mv.matType = DIFFUSE;
+            }
         }
 
     }

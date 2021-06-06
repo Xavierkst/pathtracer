@@ -225,9 +225,31 @@ RT_PROGRAM void direct() {
     payload.done = true;
 }
 
-RT_CALLABLE_PROGRAM float3 computeSphericalDir(float theta, float phi) {
-    return make_float3(cosf(phi) * 
+//RT_CALLABLE_PROGRAM float3 computeSphericalDir(float theta, float phi) {
+//    return make_float3(cosf(phi) * 
+//        sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
+//}
+
+RT_CALLABLE_PROGRAM void genCoordFrame(float3 w, float3& u, float3& v) {
+
+    // incase a and w are closely aligned, swap a out for 
+    // a diff arbitrary vector <1,0,0> instead of <0,1,0>
+    float3 a = make_float3(.0f, 1.0f, .0f);
+    if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
+        a = make_float3(1.0f, .0f, .0f);
+    }
+    u = normalize(cross(a, w)); 
+    v = normalize(cross(w, u)); 
+}
+
+// Generates a new w_i direction:
+// components u, v, w correspond to x, y and -wo
+RT_CALLABLE_PROGRAM float3 sphericalDir(float theta, float phi, float3 u, float3 v, float3 w) {
+    float3 sample_s = make_float3(cosf(phi) * 
         sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
+
+    return normalize((sample_s.x * u +
+        sample_s.y * v + sample_s.z * w));
 }
 
 RT_CALLABLE_PROGRAM float3 phongBRDF(float3 wi, float3 wo, float3 reflect_vec, 
@@ -273,10 +295,37 @@ RT_CALLABLE_PROGRAM float ggxPDF(float3 wi, float3 wo, float3 n, float3 half_ang
 // vary each scatter direction within the volume. Simulates scattering behavior 
 // by light rays
 RT_CALLABLE_PROGRAM float phaseHG(float wi_dot_wo, float g) {
-    float denom = 4.0f * M_PIf * powf((1.0f + powf(g, 2.0f) + 2.0f * g * wi_dot_wo), 3.0f / 2.0f);
-    float numerator = 1.0f - powf(g, 2.0f);
+    float numerator = (1.0f - (g * g)); 
+    float denom = powf((1.0f + powf(g, 2.0f) + (2.0f * g * wi_dot_wo)), (3.0f / 2.0f));
 
-    return (numerator / denom); 
+    return (1.0f / (4.0f * M_PIf)) * (numerator / denom);
+}
+
+
+RT_CALLABLE_PROGRAM float sampleHG(float3 wo, float3& wi, float g, float rando_samples[]) {
+
+    // find cos_theta val for phaseHG function
+    float cos_theta = .0f;
+    // if g == 0 
+    if (fabsf(g) < 0.001f) {
+        cos_theta = 1.0f - (2.0f * rando_samples[0]); // we'll default cos_theta to this value 
+    }
+    else { // for g > 0 
+        cos_theta = (1.0f / (2.0f * g)) * 
+            (1.0f + powf(g, 2.0f) - powf((1 - g * g) / (1 - g + (2.0f * g * rando_samples[0])), 2.0f));
+    }
+
+    // find sampling direction w_i (i.e the next scatter direction)
+    float phi = 2.0f * M_PIf * rando_samples[1];
+    float3 v1, v2;
+
+    return phaseHG(-cos_theta, g);
+}
+
+RT_CALLABLE_PROGRAM void swapValue(float& v1, float& v2) {
+    float temp = v1;
+    v1 = v2;
+    v2 = temp;
 }
 
 RT_PROGRAM void pathTracer() {
@@ -341,7 +390,7 @@ RT_PROGRAM void pathTracer() {
             t = fmaxf(.25f, k_val);
         }
     }
-
+    
     switch (sampling_method) {
     case HEMISPHERE_SAMPLING:
         //rtPrintf("hemisphere here\n");
@@ -365,58 +414,91 @@ RT_PROGRAM void pathTracer() {
     default:
         break;
     }
-
-    // qn: why rotate s wrt the z-axis? and not the y-axis?
-    float3 sample_s = computeSphericalDir(theta, phi);
-
-    // generate coordinate frame at the intersect point
-    // if specular brdf chosen, center sample_s at reflection vector r
-    w = ((zeta_0 <= t) && (sampling_method == BRDF_SAMPLING)) ? r : n;
-
-    // get randomized new ray dir -- choose a sampling method
-    if (mv.brdf_type == MOD_PHONG) { // Phong 
-        float3 a = make_float3(.0f, 1.0f, .0f);
-        // incase a and w are closely aligned, swap a out for 
-        // a diff arbitrary vector <1,0,0> instead of <0,1,0>
-        if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
-            a = make_float3(1.0f, .0f, .0f);
-        }
-        float3 u = normalize(cross(a, w));
-        float3 v = normalize(cross(w, u));
-        w_i = normalize((sample_s.x * u + sample_s.y * v + sample_s.z * w));
-    }
-    else { // GGX 
-        float theta_h_sample = atanf((mv.roughness * sqrtf(zeta_1)) / sqrtf(1.0f - zeta_1));
-        float phi_h_sample = 2.0f * M_PIf * zeta_2;
-        float3 h_sample = computeSphericalDir(theta_h_sample, phi_h_sample);
-
-        float3 w_h = n;
-        float3 a_h = make_float3(.0f, 1.0f, .0f);
-        if (1.0f - fabsf(dot(a_h, w_h)) <= 1.0f) {
-            a_h = make_float3(1.0f, .0f, .0f);
-        }
-        float3 u_h = normalize(cross(a_h, w_h));
-        float3 v_h = normalize(cross(w_h, u_h));
-
-        //rtPrintf("or ere?\n");
-        h_sample = (h_sample.x * u_h + h_sample.y * v_h + h_sample.z * w_h);
-        w_i = normalize(reflect(-attrib.wo, h_sample));
-    }
-
-    // w_i here is always above visible hemisphere. Now we have to check if ----------------------------
-    // we want to sample below visible hemisphere -- the Normal at the intersect pt 
-    // will decide that -- we have to determine if we're inside or outside of
-    // the medium (default medium we're in is vacuum) -- check index of refraction
     
     // we intersected the geometry, now we want to decide to cast either reflection or refraction ray
     // 1. Check material of surface before calling fresnel_schlick: 
     // if reflective, continue reflection as per normal
     // else if refractive: we have to make a choice whether ray will reflect or transmit into medium
-    
-    // we will use probabilities generated by fresnel_schlick to choose reflected or refract ray
-    // what threshold probability value will give us refracted ray? 
-    //float reflect_prob = fresnel_schlick(dot((w_i), attrib.normal));
 
+    // Compute w_i with the refracted angle
+    if (mv.matType == GLASS) {
+        float3 inc_ray_dir = -attrib.wo;
+        float3 norm = n;
+        // we want to choose if we're going to reflect or refract this ray: 
+        // if refract, use refract_vec below as the new w_i, else reflect just use 
+        //  standard sampling technique (below)
+
+        // we make w = n or -n
+        // by checking if incoming ray is inside or outside the surface
+        float n1 = 1.0f; float n2 = mv.ior;
+        float eta = .0f;
+        //float i_dot_n = dot(inc_ray_dir, norm);
+        float i_dot_n = .0f;
+        float reflect_probability = .0f;
+        //rtPrintf("before %f %f \n", n1, n2);
+        float3 chosen_ray_dir = make_float3(.0f);
+        if (dot(inc_ray_dir, n) >= .0f) { // incoming ray inside surface
+            //norm = -norm;
+            swapValue(n1, n2);
+            i_dot_n = dot(inc_ray_dir, norm);
+            //rtPrintf("after %f %f \n", n1, n2);
+        }
+        else { // outside of surface
+            // no change in normal or n1, n2
+            //i_dot_n = -i_dot_n; // TESTT
+            i_dot_n = dot(inc_ray_dir, -norm);
+        }
+        // check if refraction is possible, if yes, there's
+        // a chance for refract, else, reflection only
+        eta = n2 / n1;
+        if (refract(chosen_ray_dir, inc_ray_dir, norm, eta)) {
+            reflect_probability = fresnel_schlick(i_dot_n);
+        }
+        else {
+            reflect_probability = 1.0f; // completely reflected
+        }
+        // now choose between reflect or refract ray 
+        //float reflect_probability = fresnel_schlick(dot(inc_ray_dir, norm));
+        //reflect_probability = fresnel_schlick(i_dot_n);// TESTT
+        float rand_valz = rnd(payload.seed);
+        if (rand_valz </* rnd(payload.seed)*/reflect_probability) { // reflection chosen
+            //chosen_ray_dir = reflect(inc_ray_dir, norm);
+            w_i = normalize(reflect(inc_ray_dir, norm));
+            //rtPrintf("reflect? %f %f\n", rand_valz, /*rnd(payload.seed)*/reflect_probability);
+        }
+        else {
+            w_i = normalize(chosen_ray_dir);
+            //rtPrintf("refract? %f %f\n", rand_valz,reflect_probability);
+        }
+    }
+    else { // if the material is not glass, we sample normally
+
+        // get new spherical ray dir -- choose a sampling method
+        if (mv.brdf_type == MOD_PHONG) { // Phong 
+            // generate coordinate frame at the intersect point
+            // if specular brdf chosen, center sample_s at reflection vector r
+            w = ((zeta_0 <= t) && (sampling_method == BRDF_SAMPLING)) ? r : n;
+            float3 u = make_float3(.0f);
+            float3 v = make_float3(.0f);
+            // qn: why rotate s wrt the z-axis? and not the y-axis?
+            genCoordFrame(w, u, v);
+            w_i = sphericalDir(theta, phi, u, v, w);
+        }
+        else { // GGX sampling
+            float theta_h_sample = atanf((mv.roughness * sqrtf(zeta_1)) / sqrtf(1.0f - zeta_1));
+            float phi_h_sample = 2.0f * M_PIf * zeta_2;
+            float3 w_h = n;
+            float3 u_h = make_float3(.0f);
+            float3 v_h = make_float3(.0f);
+            // generate coordinate frame
+            genCoordFrame(w_h, u_h, v_h);
+            // compute new w_i direction
+            w_i = normalize(reflect(-attrib.wo, 
+                sphericalDir(theta_h_sample, phi_h_sample, u_h, v_h, w_h)));
+        }
+    }
+
+    // Calculating dir light contribution from NEE
     if (cf.next_event_est && mv.brdf_type != VOLUMETRIC) {
         // Add direct lighting here:
         for (int k = 0; k < qlights.size(); ++k) {
@@ -563,7 +645,6 @@ RT_PROGRAM void pathTracer() {
                     float area = length(cross(ab, ac));
 
                     float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
-                    //float3 shadow_ray_dir = w_i;
                     // trace the ray and see if it hits a light source
                     Ray shadow_ray = make_Ray(shadow_ray_origin, w_i, 1, cf.epsilon, RT_DEFAULT_MAX);
                     //float light_dist = length(sampled_light_pos - shadow_ray_origin);
@@ -579,16 +660,9 @@ RT_PROGRAM void pathTracer() {
 
                         pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i))));
                     }
-                    /*else {
-                        pdf_lights_k += .0f;
-                    }*/
-                }
-        //rtPrintf("brdf here");
+            }
         // check the material whether to use mod-phong or GGX brdf
         if (mv.brdf_type == MOD_PHONG) {
-            /*f_brdf = (K_d / M_PIf) +
-                (K_s * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                    powf(fmaxf(dot(r, w_i), .0f), mv.shininess));*/
             f_brdf = phongBRDF(w_i, attrib.wo, r, mv.shininess, K_d, K_s);
 
             pdf = ((1.0f - t) * (dot(n, w_i) / M_PIf)) +
@@ -596,108 +670,105 @@ RT_PROGRAM void pathTracer() {
                 powf(fmaxf(dot(r, w_i), .0f), mv.shininess);
         }
         else if (mv.brdf_type == VOLUMETRIC) {
-            //f_brdf = 
             //pdf = 1.0f / (4.0f * M_PIf);
             
              // Add direct lighting here:
-        for (int k = 0; k < qlights.size(); ++k) {
-            float3 sampled_result = make_float3(.0f);
-            float pdf_lights_k = .0f;
-            float pdf_brdf = .0f;
-            float3 w_i_dir = make_float3(.0f);
-            float3 h = make_float3(.0f);
-            float D = .0f;
-            // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
-            float3 a = qlights[k].tri1.v1;
-            float3 b = qlights[k].tri1.v2;
-            float3 c = qlights[k].tri2.v3;
-            float3 d = qlights[k].tri2.v2;
+            for (int k = 0; k < qlights.size(); ++k) {
+                float3 sampled_result = make_float3(.0f);
+                float pdf_lights_k = .0f;
+                float pdf_brdf = .0f;
+                float3 w_i_dir = make_float3(.0f);
+                float3 h = make_float3(.0f);
+                float D = .0f;
+                // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
+                float3 a = qlights[k].tri1.v1;
+                float3 b = qlights[k].tri1.v2;
+                float3 c = qlights[k].tri2.v3;
+                float3 d = qlights[k].tri2.v2;
 
-            float3 ac = c - a;
-            float3 ab = b - a;
-            float area = length(cross(ab, ac));
-            int root_light_samples = (int)sqrtf(light_samples);
-            // check if stratify or random sampling
-            // double for loop here 
-            for (int i = 0; i < root_light_samples; ++i) {
-                for (int j = 0; j < root_light_samples; ++j) {
-                    // generate random float vals u1 and u2
-                    float u1 = rnd(payload.seed);
-                    float u2 = rnd(payload.seed);
+                float3 ac = c - a;
+                float3 ab = b - a;
+                float area = length(cross(ab, ac));
+                int root_light_samples = (int)sqrtf(light_samples);
+                // check if stratify or random sampling
+                // double for loop here 
+                for (int i = 0; i < root_light_samples; ++i) {
+                    for (int j = 0; j < root_light_samples; ++j) {
+                        // generate random float vals u1 and u2
+                        float u1 = rnd(payload.seed);
+                        float u2 = rnd(payload.seed);
 
-                    float3 sampled_light_pos;
-                    if (light_stratify) {
-                        sampled_light_pos = a + ((j + u1) * (ab / (float)root_light_samples)) +
-                            ((i + u2) * (ac / (float)root_light_samples));
-                    }
-                    else {
-                        sampled_light_pos = a + u1 * ab + u2 * ac;
-                    }
-
-                    float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
-                    float3 shadow_ray_dir = normalize(sampled_light_pos - shadow_ray_origin);
-                    float light_dist = length(sampled_light_pos - shadow_ray_origin);
-                    Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon, light_dist - cf.epsilon);
-
-                    ShadowPayload shadow_payload;
-                    shadow_payload.isVisible = true;
-                    rtTrace(root, shadow_ray, shadow_payload);
-
-                    if (shadow_payload.isVisible) {
-                        //float D = .0f;
-                        
-                        // rendering equation here: 
-                        //float3 w_i = sampled_light_pos;
-                        w_i_dir = normalize(sampled_light_pos - shadow_ray_origin);
-
-                        float3 f_brdf = make_float3(.0f);
-                        if (mv.brdf_type == MOD_PHONG) {
-                            f_brdf = (mv.diffuse / M_PIf) +
-                                (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
-                                    powf(fmaxf(dot(r, w_i_dir), .0f), mv.shininess));
+                        float3 sampled_light_pos;
+                        if (light_stratify) {
+                            sampled_light_pos = a + ((j + u1) * (ab / (float)root_light_samples)) +
+                                ((i + u2) * (ac / (float)root_light_samples));
                         }
-                        else { // GGX 
-                            float wi_dot_n_dir = dot(w_i_dir, n);
-                            float wo_dot_n_dir = dot(attrib.wo, n);
-                            if (wi_dot_n_dir > .0f && wo_dot_n_dir > .0f) {
-                                float3 f_brdf_GGX = ggxBRDF(w_i_dir, attrib.wo, n, mv.roughness, K_s);
-                                f_brdf = (K_d / M_PIf) + f_brdf_GGX;
+                        else {
+                            sampled_light_pos = a + u1 * ab + u2 * ac;
+                        }
+
+                        float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
+                        float3 shadow_ray_dir = normalize(sampled_light_pos - shadow_ray_origin);
+                        float light_dist = length(sampled_light_pos - shadow_ray_origin);
+                        Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon, light_dist - cf.epsilon);
+
+                        ShadowPayload shadow_payload;
+                        shadow_payload.isVisible = true;
+                        rtTrace(root, shadow_ray, shadow_payload);
+
+                        if (shadow_payload.isVisible) {
+                            //float D = .0f;
+                            
+                            // rendering equation here: 
+                            //float3 w_i = sampled_light_pos;
+                            w_i_dir = normalize(sampled_light_pos - shadow_ray_origin);
+
+                            float3 f_brdf = make_float3(.0f);
+                            if (mv.brdf_type == MOD_PHONG) {
+                                f_brdf = (mv.diffuse / M_PIf) +
+                                    (mv.specular * ((mv.shininess + 2.0f) / (2.0f * M_PIf)) *
+                                        powf(fmaxf(dot(r, w_i_dir), .0f), mv.shininess));
                             }
+                            else { // GGX 
+                                float wi_dot_n_dir = dot(w_i_dir, n);
+                                float wo_dot_n_dir = dot(attrib.wo, n);
+                                if (wi_dot_n_dir > .0f && wo_dot_n_dir > .0f) {
+                                    float3 f_brdf_GGX = ggxBRDF(w_i_dir, attrib.wo, n, mv.roughness, K_s);
+                                    f_brdf = (K_d / M_PIf) + f_brdf_GGX;
+                                }
+                            }
+
+                            float3 x_prime = sampled_light_pos;
+                            float3 x = shadow_ray_origin;
+                            float3 n = attrib.normal;
+                            float3 n_light = normalize(cross(ab, ac));
+
+                            float R = length(x - x_prime);
+
+                            // note: normal should point AWAY from the hitpoint, i.e. dot(n_light, x - x_prime) < 0
+                            float G = (1.0f / powf(R, 2.0f)) * fmaxf(dot(n, normalize(x_prime - x)), .0f) *
+                                (fmaxf(dot(n_light, normalize(x_prime - x)), .0f));
+
+                            sampled_result += f_brdf * G;
+                            //pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i_dir)))); 
                         }
-
-                        float3 x_prime = sampled_light_pos;
-                        float3 x = shadow_ray_origin;
-                        float3 n = attrib.normal;
-                        float3 n_light = normalize(cross(ab, ac));
-
-                        float R = length(x - x_prime);
-
-                        // note: normal should point AWAY from the hitpoint, i.e. dot(n_light, x - x_prime) < 0
-                        float G = (1.0f / powf(R, 2.0f)) * fmaxf(dot(n, normalize(x_prime - x)), .0f) *
-                            (fmaxf(dot(n_light, normalize(x_prime - x)), .0f));
-
-                        sampled_result += f_brdf * G;
-                        //pdf_lights_k += (powf(R, 2.0f) / (area * fabsf(dot(n, w_i_dir)))); 
                     }
                 }
+                //f_brdf =  
+                phase_fn_value = phaseHG(dot(w_i, -attrib.wo), .7f);
+                // divide brdf by the pdf here
+                L_d += qlights[k].color * sampled_result * (area / (float)light_samples);
             }
-            //f_brdf =  
-            
-            phase_fn_value = phaseHG(dot(w_i, -attrib.wo), .7f);
-            // divide brdf by the pdf here
-            L_d += qlights[k].color * sampled_result * (area / (float)light_samples);
+            break;
         }
-         break;
-        }
-        else {
-            // construct GGX BRDF: 
+        else { // Default: use GGX BRDF
             float wi_dot_n = dot(w_i, n);
             float wo_dot_n = dot(attrib.wo, n);
+            
             if (wi_dot_n > .0f && wo_dot_n > .0f) {
                 float3 h = normalize(w_i + attrib.wo); // half angle: 
                 float3 f_brdf_GGX = ggxBRDF(w_i, attrib.wo, n, mv.roughness, K_s);
                 f_brdf = (K_d / M_PIf) + f_brdf_GGX;
-
                 pdf = ggxPDF(w_i, attrib.wo, n, h, t, mv.roughness);
             }
             else f_brdf = make_float3(.0f); // assume f zero otherwise
@@ -723,12 +794,14 @@ RT_PROGRAM void pathTracer() {
     // Check if its first intersected surface
     if (cf.next_event_est && (payload.depth == 0)) {
         // use direct lighting and emission contribution from object for 1st bounce
+        //rtPrintf("wb here?\n"); 
         result += L_e + L_d; 
     }
     // on the last bounce, we return only emission term
     else {
         if (cf.next_event_est == ON || cf.next_event_est == MIS) {
             // only use direct lighting contribution if NEE
+            //rtPrintf("or here?\n"); 
             result += L_d; 
         }
         //else if (cf.next_event_est == MIS) {
@@ -736,6 +809,7 @@ RT_PROGRAM void pathTracer() {
         //}
         else {
             // If no NEE, use only emission contribution from object
+            //rtPrintf("here?\n"); 
             result += L_e;
         }
     }
@@ -743,7 +817,7 @@ RT_PROGRAM void pathTracer() {
     
     // Apply russian roulette to determine whether to terminate ray
     // or boost its contribution
-    float q;
+    float q = .0f;
     if (cf.russian_roul) {
         q = 1.0f - fmin(fmax(fmax(payload.throughput.x, payload.throughput.y), payload.throughput.z), 1.0f);
         // pick a num from 0 to 1, if less than q, terminate ray
@@ -757,7 +831,13 @@ RT_PROGRAM void pathTracer() {
         }
     }
     
-    payload.throughput *= addon_throughput;
+    if (mv.matType == GLASS) { // we don't diminish throughput of glass?
+        payload.throughput *= make_float3(1.0f);
+        //payload.depth = 0;
+    }
+    else 
+        payload.throughput *= addon_throughput;
+
     if (mv.brdf_type == VOLUMETRIC) {
         float random_val = rnd(payload.seed);
         // coeffs of scattering
@@ -774,6 +854,6 @@ RT_PROGRAM void pathTracer() {
         payload.origin = attrib.intersection;
         payload.dir = w_i;
     }
-    //payload.dir = w_i;
-    payload.depth++;
+    if (mv.matType != GLASS)
+        payload.depth++;
 }

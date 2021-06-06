@@ -85,19 +85,23 @@ tri 0 2 3
 popTransform
 
 # sphere material settings 
-brdf volumetric
+#brdf volumetric
 #brdf ggx
 roughness 0.5
 
 #sphere
+materialtype glass
+ior 1.03
 diffuse 0.2 0.2 0.2
 specular 0.8 0.8 0.8
 pushTransform
 translate 0 0.5 0
 scale 0.5 0.5 0.5
 
-sphere 0 0 0 1
-
+sphere -0.8 0 0.4 0.7
+ior 1.12
+sphere .4 0 -0.8 0.7
+sphere -0.4 0 -0.8 0.7
 popTransform
 
 popTransform
