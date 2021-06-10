@@ -55,6 +55,7 @@ RT_PROGRAM void intersect(int primIndex)
         attrib.wo = -ray.direction;
         attrib.normal = nDotWo > 0 ? n : -n;
         attrib.mv = tri.mv;
+        attrib.prev_intersection = ray.origin;
 
         attrib.objType = tri.objType;
 

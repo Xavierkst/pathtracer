@@ -57,6 +57,10 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     mv.brdf_type = MOD_PHONG; 
     mv.ior = 1.0f;
     mv.matType = DIFFUSE;
+    mv.sigma_a = 1.0f;
+    mv.sigma_s = 1.0f;
+    mv.sigma_t = 1.0f;
+    mv.g = 5.0f;
     defaultMv = mv;
     //float curr_ior = 1.0f;
     //materialType material_type = DIFFUSE;
@@ -238,15 +242,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             // quad lights don't need to have material values so we just default them
             MaterialValue defMv;
             defMv = mv;
-            //defMv.ambient = optix::make_float3(0);
-            //defMv.diffuse = optix::make_float3(0);
-            //defMv.specular = optix::make_float3(0);
-            //defMv.emission = optix::make_float3(0);
-            //defMv.shininess = mv.shininess;
-            //defMv.roughness = mv.roughness;
-            //defMv.brdf_type = mv.brdf_type;
-            //defMv.shininess = 30;
-
             defMv.emission = intensity; // the "diffuse color" of the light
 
             // A quad made up of 2 triangles
@@ -341,9 +336,12 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             if (svalues[0].compare("ggx") == 0) {
                 mv.brdf_type = GGX;
             }
-            else if (svalues[0].compare("volumetric") == 0) {
-                mv.brdf_type = VOLUMETRIC;
+            else { 
+                mv.brdf_type = MOD_PHONG;
             }
+            //else if (svalues[0].compare("volumetric") == 0) {
+            //    mv.brdf_type = VOLUMETRIC;
+            //}
 
         }
 
@@ -362,10 +360,23 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             if (svalues[0].compare("glass") == 0) {
                 mv.matType = GLASS;
             }
-            else if (svalues[0].compare("diffuse") == 0) {
+            else if (svalues[0].compare("volumetric") == 0) {
+                mv.matType = VOLUMETRIC;
+            }
+            else {
                 mv.matType = DIFFUSE;
             }
         }
+
+        else if (cmd == "scattercoeff" && readValues(s, 3, fvalues)) {
+            // default is hemisphere sampling already
+            mv.sigma_a = fvalues[0];
+            mv.sigma_s = fvalues[1];
+            mv.sigma_t = mv.sigma_a + mv.sigma_s;
+            mv.g = fvalues[2];
+        }
+
+        
 
     }
 

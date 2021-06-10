@@ -20,8 +20,8 @@ maxverts 50005
 
 materialtype glass
 ior 1.0
-brdf ggx
-diffuse 0.08 0.4 0.005
+#brdf ggx
+diffuse 0.88 0.8 0.80
 roughness 0.1
 specular 0.2 0.2 0.2
 

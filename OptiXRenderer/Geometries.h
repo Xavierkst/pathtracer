@@ -9,9 +9,9 @@
 
 enum objectType { OBJECT, LIGHT };
 
-enum brdfType { MOD_PHONG, GGX, VOLUMETRIC };
+enum brdfType { MOD_PHONG, GGX/*, VOLUMETRIC */};
 
-enum materialType { DIFFUSE, GLASS };
+enum materialType { DIFFUSE, GLASS, VOLUMETRIC };
 
 struct MaterialValue
 {
@@ -20,7 +20,7 @@ struct MaterialValue
     brdfType brdf_type;    
     float ior;
     materialType matType;
-
+    float sigma_a, sigma_s, sigma_t, g;
 };
 
 struct Triangle
@@ -39,7 +39,7 @@ struct Sphere
 
 struct Attributes
 {
-    optix::float3 intersection, normal, wo;
+    optix::float3 intersection, normal, wo, prev_intersection;
     MaterialValue mv;
     objectType objType;
 };
