@@ -1,6 +1,5 @@
 # path tracer with Nvidia OptiX  
-
-Some of the images I rendered: 
+Some of the rendered images: 
 
 ![Red Dragon](https://github.com/Xavierkst/pathtracer/images/red_dragon.png)
 
