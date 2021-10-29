@@ -182,4 +182,14 @@ RT_PROGRAM void bound(int primIndex, float result[6])
     //result[3] = xMax;
     //result[4] = yMax;
     //result[5] = zMax;
+    float x, y, z;    
+    x = length(make_float3(sphere.transform.getRow(0)));
+    y = length(make_float3(sphere.transform.getRow(1)));
+    z = length(make_float3(sphere.transform.getRow(2)));
+    result[0] = sphere.transform[3] - x;
+    result[1] = sphere.transform[7] - y;
+    result[2] = sphere.transform[11] - z;
+    result[3] = sphere.transform[3] + x;
+    result[4] = sphere.transform[7] + y;
+    result[5] = sphere.transform[11] + z;
 }

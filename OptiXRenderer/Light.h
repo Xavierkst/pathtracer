@@ -49,14 +49,8 @@ struct DirectionalLight
     optix::float3 light_dir;
     optix::float3 light_color;
 
-    Attenuation attenuation; 
-
-    DirectionalLight(optix::float3 dir, optix::float3 color, 
-        Attenuation atten) {
+    DirectionalLight(optix::float3 dir, optix::float3 color) {
         light_dir = optix::normalize(dir);
         light_color = color;
-        attenuation.constant = atten.constant;
-        attenuation.linear = atten.linear;
-        attenuation.quadratic = atten.quadratic;
     }
 };

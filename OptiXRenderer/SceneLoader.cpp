@@ -127,8 +127,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         else if (cmd == "directional" && readValues(s, 6, fvalues)) {
            scene->dlights.push_back(DirectionalLight(
                optix::make_float3(fvalues[0], fvalues[1], fvalues[2]), 
-               optix::make_float3(fvalues[3], fvalues[4], fvalues[5]), 
-               atten));
+               optix::make_float3(fvalues[3], fvalues[4], fvalues[5])));
         }
 
         else if (cmd == "point" && readValues(s, 6, fvalues)) {
