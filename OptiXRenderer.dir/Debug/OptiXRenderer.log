@@ -1,0 +1,3 @@
+﻿  SceneLoader.cpp
+C:\Users\Xavie\OneDrive\Desktop\Spring 2021\CSE 168\CSE-168-OptiX-Solution\OptiXRenderer\SceneLoader.cpp(283,45): warning C4244: '=': conversion from 'float' to 'unsigned int', possible loss of data
+  OptiXRenderer.vcxproj -> C:\Users\Xavie\OneDrive\Desktop\Spring 2021\CSE 168\build2\bin\Debug\OptiXRenderer.exe

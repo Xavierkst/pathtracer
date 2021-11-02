@@ -5,7 +5,8 @@ integrator pathtracer
 spp 128
 gamma 2.2
 importancesampling brdf
-nexteventestimation mis
+#nexteventestimation mis
+nexteventestimation on
 russianroulette on
 camera  -8 6 14  -1 -1 0  0 1 0  45
 output dragon.png

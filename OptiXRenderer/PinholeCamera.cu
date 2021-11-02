@@ -5,6 +5,7 @@
 
 #include "Payloads.h"
 #include "Config.h"
+#include "Light.h"
 
 using namespace optix;
 
@@ -17,6 +18,10 @@ rtDeclareVariable(uint2, launchIndex, rtLaunchIndex, ); // a 2d index (x, y)
 rtDeclareVariable(int1, frameID, , );
 
 rtBuffer<Config> config; // Config
+
+rtDeclareVariable(int, samples_per_pixel, , );
+
+rtDeclareVariable(uint, next_event_est, , );
 
 RT_PROGRAM void generateRays()
 {
@@ -34,38 +39,75 @@ RT_PROGRAM void generateRays()
     float3 dir = normalize(ab.x * cf.u + ab.y * cf.v - cf.w); // ray direction
     float3 origin = cf.eye; // ray origin
 
-    // Prepare a payload
     Payload payload;
-    payload.radiance = make_float3(0.f);
-    payload.throughput = make_float3(1.f);
-    payload.depth = 0;
-    payload.done = false;
     int i = 0;
 
+    //if (cf.next_event_est) cf.maxDepth--;
+
     // Iteratively trace rays (recursion is very expensive on GPU)
-    do
-    {
-        payload.seed = tea<16>(index * frameID.x, i++);
+    for (int j = 0; j < samples_per_pixel; ++j) {
+        // Prepare new payload for each sample
+        payload.radiance = make_float3(.0f);
+        payload.throughput = make_float3(1.0f);
+        payload.depth = 0;
+        payload.done = false;
+        // jitter rays entering pixel
+        xy = make_float2(launchIndex);
+        xy.x += (j == 0) ? 0.5f : rnd(seed);
+        xy.y += (j == 0) ? 0.5f : rnd(seed);
+        ab = cf.tanHFov * (xy - cf.hSize) / cf.hSize;
+        origin = cf.eye;
+        dir = normalize(ab.x * cf.u + ab.y * cf.v - cf.w); // ray direction
 
-        // Trace a ray
-        Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);
-        rtTrace(root, ray, payload);
+        do
+        {
+            payload.seed = tea<16>(index * frameID.x, i++);
 
-        // Accumulate radiance
-        result += payload.radiance;
-        payload.radiance = make_float3(0.f);
+            // Trace a ray (or primary ray)
+            Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);
+            rtTrace(root, ray, payload);
 
-        // Prepare to shoot next ray
-        origin = payload.origin;
-        dir = payload.dir;
-    } while (!payload.done && payload.depth != cf.maxDepth);
+            // Accumulate radiance
+            result += payload.radiance;
+            payload.radiance = make_float3(0.f);
+
+            //rtPrintf("depth is: %d and %d\n", payload.depth, cf.maxDepth); 
+            // Prepare to shoot next ray
+            origin = payload.origin;
+            dir = payload.dir;
+        } while (!payload.done && payload.depth != cf.maxDepth);
+    }
+    
+    // average out the results 
+    result = (result / samples_per_pixel);
+
+    result = make_float3(powf(result.x, 1.0f / cf.gamma), powf(result.y, 1.0f / cf.gamma), powf(result.z, 1.0f / cf.gamma));
+    //do
+    //{
+    //    payload.seed = tea<16>(index * frameID.x, i++);
+
+    //    // Trace a ray (or primary ray)
+    //    Ray ray = make_Ray(origin, dir, 0, cf.epsilon, RT_DEFAULT_MAX);
+    //    rtTrace(root, ray, payload);
+
+    //    // Accumulate radiance
+    //    result += payload.radiance;
+    //    payload.radiance = make_float3(0.f);
+
+    //    // Prepare to shoot next ray
+    //    origin = payload.origin;
+    //    dir = payload.dir;
+    //} while (!payload.done && payload.depth != cf.maxDepth);
+    //} while (!payload.done && payload.depth != 0);
     
     if (frameID.x == 1) 
         resultBuffer[launchIndex] = result;
     else
     {
+        //rtPrintf("frameID is: %d", frameID.x);
         float u = 1.0f / (float)frameID.x;
         float3 oldResult = resultBuffer[launchIndex];
+        // 
         resultBuffer[launchIndex] = lerp(oldResult, result, u);
     }
 }

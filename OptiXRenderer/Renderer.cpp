@@ -65,8 +65,11 @@ void Renderer::initPrograms()
     programs["shadowCaster"] = createProgram("Common.cu", "anyHit");
 
     // Integrators 
-    programs[scene->integratorName] = createProgram("RayTracer.cu", "closestHit");
-    integrators = { scene->integratorName };
+    programs["raytracer"] = createProgram("RayTracer.cu", "closestHit");
+    programs["analyticdirect"] = createProgram("RayTracer.cu", "analyticDirect");
+    programs["direct"] = createProgram("RayTracer.cu", "direct");
+    programs["pathtracer"] = createProgram("RayTracer.cu", "pathTracer");
+    integrators = { "raytracer", "analyticdirect", "direct", "pathtracer" };
 }
 
 std::vector<unsigned char> Renderer::getResult()
@@ -79,7 +82,7 @@ std::vector<unsigned char> Renderer::getResult()
     };
 
     float3* bufferData = (float3*)resultBuffer->map();
-
+    
     // Store the data into a byte vector
     std::vector<unsigned char> imageData(width * height * 4);
     for (int i = 0; i < height; i++)
@@ -88,6 +91,7 @@ std::vector<unsigned char> Renderer::getResult()
         {
             int index = (i * width + j) * 4;
             float3 pixel = bufferData[(height - i - 1) * width + j];
+            // gamma correction included
             imageData[index + 0] = cast(pixel.x);
             imageData[index + 1] = cast(pixel.y);
             imageData[index + 2] = cast(pixel.z);
@@ -136,6 +140,8 @@ void Renderer::buildScene()
     context["width"]->setFloat(width);
     context["height"]->setFloat(height);
 
+
+    //std::cout << scene->light_samples << " and " << scene->light_stratify << std::endl;
     // Set config
     std::vector<Config> configs = { config };
     Buffer configBuffer = createBuffer(configs);
@@ -149,6 +155,15 @@ void Renderer::buildScene()
             scene->integratorName);
     }
     programs["integrator"] = programs[scene->integratorName];
+    // Pass in your variables for Integrator! ------------------------    
+    programs["integrator"]["light_stratify"]->setUint(scene->light_stratify);
+    programs["integrator"]["light_samples"]->setUint(scene->light_samples);
+    programs["integrator"]["next_event_est"]->setUint(config.next_event_est);
+    programs["integrator"]["sampling_method"]->setUint(scene->sampling_method);
+
+    // Pass in your variables for Ray Generator! ---------------------
+    programs["rayGen"]["samples_per_pixel"]->setInt(scene->samples_per_pixel);
+    programs["rayGen"]["next_event_est"]->setUint(config.next_event_est);
 
     Material material = context->createMaterial();
     material->setClosestHitProgram(0, programs["integrator"]);

@@ -8,6 +8,8 @@ using namespace optix;
 rtDeclareVariable(Payload, payload, rtPayload, );
 rtDeclareVariable(float3, backgroundColor, , );
 
+rtDeclareVariable(Attributes, attrib, attribute attrib, );
+
 RT_PROGRAM void miss()
 {
     // Set the result to be the background color if miss
@@ -28,5 +30,7 @@ rtDeclareVariable(float1, t, rtIntersectionDistance, );
 RT_PROGRAM void anyHit()
 {
     shadowPayload.isVisible = false;
+    shadowPayload.objType = attrib.objType;
+    shadowPayload.intersectPt = attrib.intersection;
     rtTerminateRay();
 }

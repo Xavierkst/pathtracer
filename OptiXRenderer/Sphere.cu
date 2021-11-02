@@ -53,6 +53,7 @@ RT_PROGRAM void intersect(int primIndex)
         attrib.normal = normalize(make_float3(tintersection) / tintersection.w);
         attrib.normal = normalize(make_float3(sphere.trans.inverse().transpose() * make_float4(attrib.normal, 0)));
         attrib.mv = sphere.mv;
+        attrib.prev_intersection = ray.origin;
         rtReportIntersection(0);
     }
 }

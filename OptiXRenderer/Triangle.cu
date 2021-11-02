@@ -15,11 +15,19 @@ RT_PROGRAM void intersect(int primIndex)
 {
     // Find the intersection of the current ray and triangle
     Triangle tri = triangles[primIndex];
+    float3 n = tri.normal;
+    // Check if incoming ray is from inside or outside the surface
+    // may need to flip normal use dot prod: if positive I and n, ray is inside the surface
+    // else if negative, incoming ray is outside the surface
+    if (dot(ray.direction, n) >= .0f) { 
+        // ray is inside the surface, flip normal
+        n = -n;
+    }
 
-    float nDotWo = dot(tri.normal, -ray.direction);
+    float nDotWo = dot(n, -ray.direction);
     if (nDotWo == 0.0f) return;
 
-    float t = dot(tri.v1 - ray.origin, tri.normal) / dot(ray.direction, tri.normal);
+    float t = dot(tri.v1 - ray.origin, n) / dot(ray.direction, n);
     float3 P = ray.origin + t * ray.direction; // intersection in the object space
 
     if (t < 0.001) return;
@@ -45,8 +53,11 @@ RT_PROGRAM void intersect(int primIndex)
         // Pass attributes
         attrib.intersection = P;
         attrib.wo = -ray.direction;
-        attrib.normal = nDotWo > 0 ? tri.normal : -tri.normal;
+        attrib.normal = nDotWo > 0 ? n : -n;
         attrib.mv = tri.mv;
+        attrib.prev_intersection = ray.origin;
+
+        attrib.objType = tri.objType;
 
         rtReportIntersection(0);
     }

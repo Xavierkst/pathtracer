@@ -1,0 +1,125 @@
+[33mcommit 03cbfdbf979edd53988873039c5e642653016621[m[33m ([m[1;36mHEAD -> [m[1;32mxavier_branch[m[33m)[m
+Author: Xavier Tan <xavier-tan@hotmail.sg>
+Date:   Mon May 17 13:24:17 2021 -0700
+
+    GGX--issues with reflections being too bright
+
+[33mcommit a26a4cd250a6eb1d0ce6445f7d6fb29a8229b509[m
+Author: Xavier Tan <xavier-tan@hotmail.sg>
+Date:   Sun May 16 17:51:35 2021 -0700
+
+    working on GGX--there are bugs
+
+[33mcommit d002ef8ec70c8a34a9843b824691b0eae0d9cd32[m
+Author: Xavier Tan <xavier-tan@hotmail.sg>
+Date:   Sat May 15 03:02:07 2021 -0700
+
+    cosine sampling
+
+[33mcommit d735b8848f4297269f524fcd40d1d686a7cf866e[m
+Author: Xavier Tan <xavier-tan@hotmail.sg>
+Date:   Mon May 3 21:24:37 2021 -0700
+
+    fixed variance issues. removed final depth result = L_e. not sure why it works...
+
+[33mcommit 98ee3895edd2e0e55954671eaa3dee842e9fffac[m
+Author: Xavier Tan <xavier-tan@hotmail.sg>
+Date:   Mon May 3 03:25:48 2021 -0700
+
+    NEE and RR
+
+[33mcommit 79b7a2e26e44ff37b29bd515afcff0b01d850ca1[m
+Author: Xavier Tan <xavier-tan@hotmail.sg>
+Date:   Sun May 2 19:36:15 2021 -0700
+
+    changed vector a condition
+
+[33mcommit 6303d7a8e189fd72c2c590fa825aab097cd86b57[m
+Author: Xavier Tan <xavier-tan@hotmail.sg>
+Date:   Sun May 2 03:10:09 2021 -0700
+
+    done w/ part 1, just gotta add dir lighting ontop of this
+
+[33mcommit 54b595774d187780816c9a6f9676a3c96ec5062a[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Thu Apr 22 14:31:03 2021 -0700
+
+    separated integrators into 3 separate programs programs in Raytracer.cu
+
+[33mcommit 3a8def97e24ed5656737d5d85dcaa69d49679915[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Wed Apr 21 20:33:25 2021 -0700
+
+    fixed issue, it was the light's tri vertices mixed up
+
+[33mcommit 33afb5c60cc19babf6bd89302c9532ca0809e97d[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Wed Apr 21 04:00:01 2021 -0700
+
+    light intensity is low, light angle and shadows weird-ish. needs fixing
+
+[33mcommit 469e5b01e728c327828fa5dc9252d18e648644f3[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Tue Apr 20 22:16:17 2021 -0700
+
+    weird images produced. not sure...
+
+[33mcommit 6c73b011ab39dd526a9e8afc0c4b38a46920f4cc[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Tue Apr 20 20:49:56 2021 -0700
+
+    weird lighting effects
+
+[33mcommit 753af5074fa294dce67a00279ff3a6f0fdb95bac[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Tue Apr 20 01:56:41 2021 -0700
+
+    implementing rendering equation
+
+[33mcommit 836030d0d2b75f096beb31f4b9bb41f40c16cc4a[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Sat Apr 17 18:42:49 2021 -0700
+
+    added analytical lighting
+
+[33mcommit 9fe383d72c75ce2bde67b6b329813b899aab360a[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Sat Apr 17 16:11:22 2021 -0700
+
+    someth wrong with scene->integratorName
+
+[33mcommit a1c0d6827a8f0c4d4566f79cb7878b71fb2fc3f2[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Sat Apr 17 12:41:02 2021 -0700
+
+    sceneloader bug fix
+
+[33mcommit bbca6200762dd3f38200f23c9708d6865be9242c[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Fri Apr 16 19:14:06 2021 -0700
+
+    small stuff
+
+[33mcommit 1cba5058929d8ad9accdea6ae8e01c37c7a104b8[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Fri Apr 16 19:13:49 2021 -0700
+
+    add parsing for quadlights
+
+[33mcommit dda1164c508b8d792374313f2dd51442cae1e6c7[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Fri Apr 16 19:13:15 2021 -0700
+
+    added quadLights
+
+[33mcommit 9540536ca565219d783aeff10b18f07345366976[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Fri Apr 16 19:13:01 2021 -0700
+
+    added an objectType to our geometries
+
+[33mcommit ac9487bf2b8fe5690bd5f69afe136b3e0ace107f[m[33m ([m[1;32mmaster[m[33m)[m
+Author: Xavier T``` <xavier-tan@hotmail.sg>
+Date:   Fri Apr 16 16:54:45 2021 -0700
+
+    Onboarding files to github

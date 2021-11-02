@@ -17,6 +17,14 @@ struct Scene
 
     std::string integratorName = "raytracer";
 
+    unsigned int light_samples;
+
+    unsigned int light_stratify;
+
+    unsigned int samples_per_pixel;
+
+    unsigned int sampling_method;
+
     std::vector<optix::float3> vertices;
 
     std::vector<Triangle> triangles;
@@ -28,7 +36,11 @@ struct Scene
 
     Scene()
     {
+        sampling_method = HEMISPHERE_SAMPLING;
         outputFilename = "raytrace.png";
         integratorName = "raytracer";
+        light_stratify = 0;
+        light_samples = 1;
+        samples_per_pixel = 1;
     }
 };

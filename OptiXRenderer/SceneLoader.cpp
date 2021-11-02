@@ -47,12 +47,23 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
     Config& config = scene->config;
 
     MaterialValue mv, defaultMv;
-    mv.ambient = optix::make_float3(0);
-    mv.diffuse = optix::make_float3(0);
-    mv.specular = optix::make_float3(0);
+    mv.ambient = optix::make_float3(0.0f);
+    mv.diffuse = optix::make_float3(0.0f);
+    mv.specular = optix::make_float3(0.0f);
     mv.emission = optix::make_float3(0);
-    mv.shininess = 1;
+    mv.shininess = 1.0f;
+    mv.roughness = 1.0f;
+    // by default, geoms use Mod phong brdf
+    mv.brdf_type = MOD_PHONG; 
+    mv.ior = 1.0f;
+    mv.matType = DIFFUSE;
+    mv.sigma_a = 1.0f;
+    mv.sigma_s = 1.0f;
+    mv.sigma_t = 1.0f;
+    mv.g = 5.0f;
     defaultMv = mv;
+    //float curr_ior = 1.0f;
+    //materialType material_type = DIFFUSE;
 
     optix::float3 attenuation = optix::make_float3(1, 0, 0);
 
@@ -111,6 +122,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         else if (cmd == "sphere" && readValues(s, 4, fvalues))
         {
             Sphere sphere;
+            //sphere.ior = curr_ior;
             sphere.trans = transStack.top();
             sphere.trans *= optix::Matrix4x4::translate(
                 optix::make_float3(fvalues[0], fvalues[1], fvalues[2]));
@@ -119,6 +131,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             sphere.mv = mv;
             sphere.objType = OBJECT; // objectTypes oftype OBJECT == not a light source 
             scene->spheres.push_back(sphere);
+            
         }
         else if (cmd == "maxverts" && readValues(s, 1, fvalues))
         {
@@ -133,6 +146,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         {
             Triangle tri;
             optix::Matrix4x4 trans = transStack.top();
+            //tri.ior = curr_ior;
             tri.v1 = transformPoint(scene->vertices[ivalues[0]]);
             tri.v2 = transformPoint(scene->vertices[ivalues[1]]);
             tri.v3 = transformPoint(scene->vertices[ivalues[2]]);
@@ -199,6 +213,10 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         {
             mv.shininess = fvalues[0];
         }
+        else if (cmd == "roughness" && readValues(s, 1, fvalues)) {
+            // default is hemisphere sampling already
+            mv.roughness = fvalues[0];
+        }
         else if (cmd == "directional" && readValues(s, 6, fvalues))
         {
             DirectionalLight dlight;
@@ -223,19 +241,13 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             
             // quad lights don't need to have material values so we just default them
             MaterialValue defMv;
-            defMv.ambient = optix::make_float3(0);
-            defMv.diffuse = optix::make_float3(0);
-            defMv.specular = optix::make_float3(0);
-            defMv.emission = intensity;
-            defMv.shininess = 1;
-
-            defMv.diffuse = optix::make_float3(0); // the "diffuse color" of the light
-	    // The triangles added from quadlight aren't hit by light, they are the light
-	    // so they need to have an emission value not a diffuse value so that other lights
-	    // don't hit it like an object
+            defMv = mv;
+            defMv.emission = intensity; // the "diffuse color" of the light
 
             // A quad made up of 2 triangles
             Triangle tri1;    // a-b-c
+            //tri1.ior = 1.0f;
+            //tri1.matType = material_type;
             tri1.v1 = a;      // edge a
             tri1.v2 = a + ab; // edge b
             tri1.v3 = a + ac; // edge c
@@ -247,6 +259,8 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri1.normal = optix::cross(ab, ac); 
 
             Triangle tri2;          // b-d-c
+            //tri2.ior = 1.0f;
+            //tri2.matType = material_type;
             tri2.v1 = a + ab;       // edge b
             tri2.v2 = a + ab + ac;  // edge d
             tri2.v3 = a + ac;       // edge c
@@ -260,11 +274,110 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
 
             // we also have a quadLights vector 
             QuadLight quad; 
-	    quad.tri1 = tri1;
+			quad.tri1 = tri1;
             quad.tri2 = tri2;
             quad.color = intensity;
             scene->qlights.push_back(quad);
         }
+
+        else if (cmd == "lightsamples" && readValues(s, 1, fvalues)) {
+            scene->light_samples = fvalues[0];
+        }
+
+        else if (cmd == "lightstratify" && readValues(s, 1, svalues)) {
+            unsigned int stratify;
+            if (svalues->compare("on") == 0) {
+                stratify = 1;
+            }
+            else
+                stratify = 0;
+
+            scene->light_stratify = stratify;
+        }
+
+        else if (cmd == "spp" && readValues(s, 1, ivalues)) {
+            scene->samples_per_pixel = ivalues[0];
+        }
+
+        else if (cmd == "nexteventestimation" && readValues(s, 1, svalues)) {
+            // default is hemisphere sampling already
+            if (svalues[0].compare("on") == 0) {
+                config.next_event_est = ON;
+            }
+            else if (svalues[0].compare("mis") == 0) {
+                config.next_event_est = MIS;
+            }
+            else {
+                config.next_event_est = OFF;
+            }
+        }
+        else if (cmd == "russianroulette" && readValues(s, 1, svalues)) {
+            if (svalues[0].compare("on") == 0) {
+                config.russian_roul = 1;
+            }
+            else {
+                config.russian_roul = 0;
+            }
+        }
+
+        else if (cmd == "importancesampling" && readValues(s, 1, svalues)) {
+            // default is hemisphere sampling already
+            if (svalues[0].compare("cosine") == 0) {
+                // by default it is hemisphere sampling
+                scene->sampling_method = COSINE_SAMPLING;
+            }
+
+            else if (svalues[0].compare("brdf") == 0) {
+                scene->sampling_method = BRDF_SAMPLING;
+            }
+        }
+
+        else if (cmd == "brdf" && readValues(s, 1, svalues)) {
+            // default is hemisphere sampling already
+            if (svalues[0].compare("ggx") == 0) {
+                mv.brdf_type = GGX;
+            }
+            else { 
+                mv.brdf_type = MOD_PHONG;
+            }
+            //else if (svalues[0].compare("volumetric") == 0) {
+            //    mv.brdf_type = VOLUMETRIC;
+            //}
+
+        }
+
+        else if (cmd == "gamma" && readValues(s, 1, fvalues)) {
+            // default is hemisphere sampling already
+            config.gamma = fvalues[0];
+        }
+
+        else if (cmd == "ior" && readValues(s, 1, fvalues)) {
+            // default is hemisphere sampling already
+            mv.ior = fvalues[0];
+        }
+
+        else if (cmd == "materialtype" && readValues(s, 1, svalues)) {
+            // default is hemisphere sampling already
+            if (svalues[0].compare("glass") == 0) {
+                mv.matType = GLASS;
+            }
+            else if (svalues[0].compare("volumetric") == 0) {
+                mv.matType = VOLUMETRIC;
+            }
+            else {
+                mv.matType = DIFFUSE;
+            }
+        }
+
+        else if (cmd == "scattercoeff" && readValues(s, 3, fvalues)) {
+            // default is hemisphere sampling already
+            mv.sigma_a = fvalues[0];
+            mv.sigma_s = fvalues[1];
+            mv.sigma_t = mv.sigma_a + mv.sigma_s;
+            mv.g = fvalues[2];
+        }
+
+        
 
     }
 

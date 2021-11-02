@@ -7,6 +7,7 @@ spp 32
 gamma 2.2
 importancesampling brdf
 nexteventestimation mis
+#nexteventestimation on
 russianroulette off
 camera  0 2 15  0 -2 2.5  0 1 0  28
 output mis.png
