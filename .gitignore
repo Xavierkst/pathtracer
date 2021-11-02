@@ -9,3 +9,7 @@ OptiXRenderer.vcxproj.filters
 OptiXRenderer.vcxproj.user
 cmake_install.cmake
 sampleConfig.h.in
+.README.md.un~
+.vs/OptiXRenderer/
+OptiXRenderer.dir/Debug/OptiXRenderer.tlog/unsuccessfulbuild
+OptiXRenderer.sln
