@@ -1,5 +1,6 @@
 # Ignore the build directory
 [Bb]uild
+<<<<<<< HEAD
 *.png
 CMakeLists.txt
 INSTALL-LINUX.txt
@@ -13,3 +14,6 @@ sampleConfig.h.in
 .vs/OptiXRenderer/
 OptiXRenderer.dir/Debug/OptiXRenderer.tlog/unsuccessfulbuild
 OptiXRenderer.sln
+=======
+*.png
+>>>>>>> f6caa29044f36949ca28b0fb6334733497a0497d

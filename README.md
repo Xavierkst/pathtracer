@@ -9,4 +9,4 @@ Some of the rendered images:
 
 ![Russian Roulette](https://github.com/Xavierkst/pathtracer/blob/main/images/cornellRR.png)
 
-![GGX Sampling](https://github.com/Xavierkst/pathtracer/blobl/main/images/ggx.png)
+![GGX Sampling](https://github.com/Xavierkst/pathtracer/blob/main/images/ggx.png)

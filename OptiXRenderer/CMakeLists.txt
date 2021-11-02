@@ -16,7 +16,10 @@ set(H_FILES
     Light.h
     Geometries.h
     Payloads.h
+<<<<<<< HEAD
     Config.h 
+=======
+>>>>>>> f6caa29044f36949ca28b0fb6334733497a0497d
     random.h
 )
 

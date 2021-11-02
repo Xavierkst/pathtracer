@@ -31,7 +31,6 @@ void Renderer::run(bool progressive)
         // Render a frame.
         context["frameID"]->setInt(++currentFrame);
         context->launch(0, width, height);
-
         // Only render a frame in progressive mode
         if (progressive) break;
     }
