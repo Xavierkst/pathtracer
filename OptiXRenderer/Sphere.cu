@@ -5,10 +5,8 @@
 using namespace optix;
 
 rtBuffer<Sphere> spheres; // a buffer of all spheres
-
 rtDeclareVariable(Ray, ray, rtCurrentRay, );
 rtDeclareVariable(float1, epsilon, , ); // scene epsilon
-
 // Attributes to be passed to material programs 
 rtDeclareVariable(Attributes, attrib, attribute attrib, );
 

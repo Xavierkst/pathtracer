@@ -26,7 +26,7 @@ struct Config
         u = optix::make_float3(0.f, 1.f, 0.f);
         v = optix::make_float3(0.f, 0.f, 1.f);
         eye = optix::make_float3(0.f);
-        hSize = optix::make_float2(100.f);
+        hSize = optix::make_float2(100.f); // half the width and height of the resolution
         tanHFov = optix::make_float2(tanf(0.25f * M_PIf));
 
         maxDepth = 5;

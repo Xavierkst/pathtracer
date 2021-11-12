@@ -4,10 +4,8 @@
 
 using namespace optix;
 
-rtBuffer<Triangle> triangles; // a buffer of all spheres
-
+rtBuffer<Triangle> triangles; // a buffer (array) of triangles 
 rtDeclareVariable(Ray, ray, rtCurrentRay, );
-
 // Attributes to be passed to material programs 
 rtDeclareVariable(Attributes, attrib, attribute attrib, );
 
