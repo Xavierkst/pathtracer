@@ -68,7 +68,9 @@ void Renderer::initPrograms()
     programs["analyticdirect"] = createProgram("RayTracer.cu", "analyticDirect");
     programs["direct"] = createProgram("RayTracer.cu", "direct");
     programs["pathtracer"] = createProgram("RayTracer.cu", "pathTracer");
-    integrators = { "raytracer", "analyticdirect", "direct", "pathtracer" };
+    programs["pathtracer2"] = createProgram("RayTracer.cu", "pathTracer2");
+
+    integrators = { "raytracer", "analyticdirect", "direct", "pathtracer", "pathtracer2" };
 }
 
 std::vector<unsigned char> Renderer::getResult()
@@ -139,8 +141,8 @@ void Renderer::buildScene()
     context["width"]->setFloat(width);
     context["height"]->setFloat(height);
 
-
     //std::cout << scene->light_samples << " and " << scene->light_stratify << std::endl;
+
     // Set config
     std::vector<Config> configs = { config };
     Buffer configBuffer = createBuffer(configs);
@@ -168,7 +170,7 @@ void Renderer::buildScene()
     material->setClosestHitProgram(0, programs["integrator"]);
     material->setAnyHitProgram(1, programs["shadowCaster"]);
 
-    // Create buffers and pass them to Optix programs that the buffers
+    // Create buffers and pass the vectors to Optix programs 
     Buffer triBuffer = createBuffer(scene->triangles);
     programs["triInt"]["triangles"]->set(triBuffer);
     programs["triBound"]["triangles"]->set(triBuffer);

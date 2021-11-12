@@ -148,7 +148,6 @@ RT_PROGRAM void analyticDirect() {
     payload.done = true;
 }
 
-
 RT_PROGRAM void direct() {
 
     MaterialValue mv = attrib.mv;
@@ -203,25 +202,21 @@ RT_PROGRAM void direct() {
                     float3 x_prime = sampled_light_pos;
                     float3 x = shadow_ray_origin;
                     float3 n = attrib.normal;
-                    //float3 n_light = normalize(qlights[k].tri1.normal);
                     float3 n_light = normalize(cross(ab, ac));
-                    //n_light = dot(n_light, normalize(x_prime - x)) > .0f ? n_light : -n_light;
-
                     float R = length(x - x_prime);
-
                     // note: normal should point AWAY from the hitpoint, i.e. dot(n_light, x - x_prime) < 0
                     float G = (1.0f / powf(R, 2.0f)) * fmaxf(dot(n, normalize(x_prime - x)), .0f) *
                         (fmaxf(dot(n_light, normalize(x_prime - x)), .0f));
 
-                    sampled_result += f_brdf * G;
+                    sampled_result += f_brdf * G; 
                 }
             }
         }
+        // we've taken samples k=1 to N of a single quad light, and we do it for all quad lights
         result += qlights[k].color * sampled_result * (area / (float)light_samples);
     }
-    //rtPrintf("throughput val: %f \n", payload.throughput);
-    payload.radiance = result;
 
+    payload.radiance = result;
     payload.done = true;
 }
 
@@ -298,11 +293,11 @@ RT_CALLABLE_PROGRAM void swapValue(float& v1, float& v2) {
 }
 
 RT_CALLABLE_PROGRAM void genCoordFrame(float3 w, float3& u, float3& v) {
-
     // incase a and w are closely aligned, swap a out for 
     // a diff arbitrary vector <1,0,0> instead of <0,1,0>
     float3 a = make_float3(.0f, 1.0f, .0f);
-    if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
+    // if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
+    if (1.0f - fabsf(dot(a, v)) <= 1.0f) {
         a = make_float3(1.0f, .0f, .0f);
     }
     u = normalize(cross(a, w)); 
@@ -369,6 +364,122 @@ RT_CALLABLE_PROGRAM float computeScatterDist(float zeta, float sigma_t) {
     return scatter_dist;
 }
 
+RT_PROGRAM void pathTracer2()
+{
+    Config cf = config[0];
+    float3 L_d = make_float3(.0f);
+    float3 L_e = attrib.mv.emission;  
+
+    if (attrib.mv.matType == LIGHT && payload.depth > 0) {
+        // payload.radiance = make_float3(1.0f);
+        payload.depth = cf.maxDepth;
+        payload.done = true;
+        return;
+    }
+
+    // Add direct lighting contribution L_d
+    for (int k = 0; k < qlights.size(); ++k) {
+        float3 sampled_result = make_float3(.0f);
+        // Compute direct lighting equation for w_i_k ray, for k = 1 to N*N
+        float3 a = qlights[k].tri1.v1;
+        float3 b = qlights[k].tri1.v2;
+        float3 c = qlights[k].tri2.v3;
+        float3 d = qlights[k].tri2.v2;
+    
+        float3 ac = c - a;
+        float3 ab = b - a;
+        float area = length(cross(ab, ac));
+        int root_light_samples = (int)sqrtf(light_samples);
+        // check if stratify or random sampling
+        // double for loop here 
+        for (int i = 0; i < root_light_samples; ++i) {
+            for (int j = 0; j < root_light_samples; ++j) {
+                // generate random float vals u1 and u2
+                float u1 = rnd(payload.seed);
+                float u2 = rnd(payload.seed);
+    
+                float3 sampled_light_pos;
+                if (light_stratify) {
+                    sampled_light_pos = a + ((j + u1) * (ab / (float)root_light_samples)) +
+                        ((i + u2) * (ac / (float)root_light_samples));
+                }
+                else {
+                    sampled_light_pos = a + u1 * ab + u2 * ac;
+                }
+                float3 shadow_ray_origin = attrib.intersection /*+ attrib.normal * cf.epsilon*/;
+                float3 shadow_ray_dir = normalize(sampled_light_pos - shadow_ray_origin);
+                float light_dist = length(sampled_light_pos - shadow_ray_origin);
+                Ray shadow_ray = make_Ray(shadow_ray_origin, shadow_ray_dir, 1, cf.epsilon, light_dist - cf.epsilon);
+    
+                ShadowPayload shadow_payload;
+                shadow_payload.isVisible = true;
+                rtTrace(root, shadow_ray, shadow_payload);
+    
+                if (shadow_payload.isVisible) {
+                    // rendering equation here: 
+                    //float3 w_i = sampled_light_pos;
+                    float3 f_brdf = phongBRDF(normalize(sampled_light_pos - shadow_ray_origin), 
+                        attrib.wo, normalize(reflect(-attrib.wo, attrib.normal)), 
+                        attrib.mv.shininess, attrib.mv.diffuse, attrib.mv.specular);
+                    float3 x_prime = sampled_light_pos;
+                    float3 x = shadow_ray_origin;
+                    float3 n = attrib.normal;
+                    float3 n_light = normalize(cross(ab, ac));
+                    float R = length(x - x_prime);
+                    // note: normal should point AWAY from the hitpoint, i.e. dot(n_light, x - x_prime) < 0
+                    float G = (1.0f / powf(R, 2.0f)) * fmaxf(dot(n, normalize(x_prime - x)), .0f) *
+                        (fmaxf(dot(n_light, normalize(x_prime - x)), .0f));
+    
+                    sampled_result += f_brdf * G; 
+                }
+            }
+        }
+        // we've taken samples k=1 to N of a single quad light, and we do it for all quad lights
+        L_d += qlights[k].color * sampled_result * (area / (float)light_samples);
+    }
+
+    float zeta1 = rnd(payload.seed), zeta2(rnd(payload.seed));
+    float theta = acosf(zeta1), phi = 2.0f * M_PIf * zeta2;
+    // making an orthonormal basis for the hemisphere we're sampling 
+    float3 s = make_float3(cosf(phi) * sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
+    // make the z-axis align with the hemisphere's normal
+    float3 w = normalize(attrib.normal), a = make_float3(0, 1, 0);
+    if (1.0f - fabsf(dot(a, w)) <= 1.0f) {
+        // the vectors are too closely aligned, try another arbitrary a
+        a = make_float3(1, 0, 0);
+    }
+
+    float3 u = normalize(cross(a, w)), v = normalize(cross(w, u));
+    // generate w_i with the new orthonormal basis 
+    float3 w_i = normalize(sphericalDir(theta, phi, u, v, w));
+    float3 norm = normalize(attrib.normal);
+    float3 incoming_ray_dir = normalize(-attrib.wo);
+    float3 reflected_ray_dir = normalize(reflect(incoming_ray_dir, norm));
+    float3 f_brdf = phongBRDF(w_i, normalize(attrib.wo), reflected_ray_dir, attrib.mv.shininess, attrib.mv.diffuse, attrib.mv.specular);
+    float pdf = 1.0f / (2.0f * M_PIf);
+    float3 attenuation = (f_brdf * fmaxf(dot(norm, w_i), .0f)) * (1.0f / pdf);
+    
+    // If not the final recursive depth yet
+    if (cf.next_event_est && payload.depth == cf.maxDepth)
+        payload.radiance = L_e;
+    else {
+        // final ray cast should only return emission radiance, L_e
+        if (cf.next_event_est) { 
+            // use direct lighting contribution for all hits except for final one
+            payload.radiance = L_d * payload.throughput;
+        }
+        else {
+            payload.radiance = L_e * payload.throughput;
+        }
+    }
+    if (payload.depth == cf.maxDepth)
+        payload.done = true;
+
+    payload.throughput *= attenuation;
+    payload.origin = attrib.intersection;
+    payload.dir = w_i;
+    payload.depth++;
+}
 
 RT_PROGRAM void pathTracer() {
     MaterialValue mv = attrib.mv;
@@ -448,9 +559,7 @@ RT_PROGRAM void pathTracer() {
     // else if refractive: we have to make a choice whether ray will reflect or transmit into medium
 
     // Compute w_i with the refracted angle
-    //rtPrintf("NOT NOT???\n");
     if (mv.matType == GLASS) {
-        //rtPrintf("herere???\n");
         float3 inc_ray_dir = -attrib.wo;
         float3 norm = n;
         // we want to choose if we're going to reflect or refract this ray: 
@@ -464,7 +573,6 @@ RT_PROGRAM void pathTracer() {
         //float i_dot_n = dot(inc_ray_dir, norm);
         float i_dot_n = .0f;
         float reflect_probability = .0f;
-        //rtPrintf("herere???\n");
         float3 chosen_ray_dir = make_float3(.0f);
         if (dot(inc_ray_dir, norm) >= .0f) { // incoming ray inside surface
             //norm = -norm;
@@ -550,8 +658,8 @@ RT_PROGRAM void pathTracer() {
             }
         }
     }
-    else { // if the material is not glass, we sample normally
-        // get new spherical ray dir -- choose a sampling method
+    else {  // if the material is not glass, we sample normally
+            // get new spherical ray dir -- choose a sampling method
         if (mv.brdf_type == MOD_PHONG) { // Phong 
             // generate coordinate frame at the intersect point
             // if specular brdf chosen, center sample_s at reflection vector r
@@ -659,7 +767,7 @@ RT_PROGRAM void pathTracer() {
                 }
             }
             // calculate weight Wi for this given w_i generated
-            pdf_NEE = pdf_lights_k /** (1.0f / (float) qlights.size())*/;
+            pdf_NEE = pdf_lights_k; /** (1.0f / (float) qlights.size())*/
 
             // calculate pdf_brdf 
             pdf_brdf = ((1.0f - t) * fmaxf(dot(n, w_i_dir), .0f) / M_PIf) + ((t * D * dot(n, h)) / (4.0f * dot(h, w_i_dir)));
@@ -770,7 +878,7 @@ RT_PROGRAM void pathTracer() {
             addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
         }
         else {
-            addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf)) * phase_fn_value;
+            addon_throughput = (f_brdf * fmaxf(dot(n, w_i), .0f) * (1.0f / pdf));
         }
         break;
         default:
