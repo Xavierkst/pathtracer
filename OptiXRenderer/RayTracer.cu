@@ -377,10 +377,63 @@ RT_PROGRAM void pathTracer2()
     float3 L_d = make_float3(.0f);
     float3 L_e = attrib.mv.emission;  
 
-    // we can skip the last bounce computation and just return emitted radiance
-    if (payload.depth == cf.maxDepth) {
-        payload.radiance = L_e;
+    // Terminate any indirect rays that intersect a light source
+    if (payload.depth > 0 && attrib.objType == LIGHT) {
+        payload.radiance = make_float3(.0f);
+        payload.depth = cf.maxDepth;
         payload.done = true;
+        return;
+    }
+
+    // Compute direct lighting
+    for (int k = 0; k < qlights.size(); ++k) {
+        int rt_light_samples = (int)sqrtf(light_samples);
+        float3 a = qlights[k].tri1.v1;
+        float3 b = qlights[k].tri1.v2;
+        float3 c = qlights[k].tri1.v3;
+        float3 d = qlights[k].tri2.v2;
+        float3 ab = b - a;
+        float3 ac = c - a;
+        float area = fabsf(length(cross(ab, ac)));
+        float3 sampled_radiance = make_float3(.0f);
+
+        for (int i = 0; i < rt_light_samples; ++i) {
+            for (int j = 0; j < rt_light_samples; ++j) {
+                float u1 = rnd(payload.seed);
+                float u2 = rnd(payload.seed);
+                float3 light_sample_pos;
+                if (light_stratify) {
+                    // each subdivision cell of the light will be sampled
+                    light_sample_pos = a + (j + u1) * (ab / (float) rt_light_samples) + (i + u2) * (ac / (float) rt_light_samples);
+                }
+                else { 
+                    light_sample_pos = a + ab * u1 + ac * u2;
+                }
+
+                float3 light_sample_dir = normalize(light_sample_pos - attrib.intersection);
+                float dist = length(light_sample_pos - attrib.intersection);
+                float3 n_light = normalize(cross(ab, ac));
+                // ray type 1 is shadow ray
+                Ray shadow_ray = make_Ray(attrib.intersection, light_sample_dir, 1, cf.epsilon, dist - cf.epsilon);
+                ShadowPayload shadow_payload;
+                shadow_payload.isVisible = true; // assume point x not occluded b4 trace to light
+                // Check if ray is occluded, if not, accumulate radiance frm light src
+                rtTrace(root, shadow_ray, shadow_payload);
+                // if not occluded, sample light radiance at that point (the V() term)
+                if (shadow_payload.isVisible) {
+                    // calculate BRDF, G(), V()
+                    float3 reflect_dir = reflect(-attrib.wo, attrib.normal);
+                    float G = (1.0f / (dist * dist))
+                        * fmaxf(dot(attrib.normal, light_sample_dir), .0f)
+                        * fmaxf(dot(n_light, light_sample_dir), .0f);
+                    float3 f_brdf = phongBRDF(light_sample_dir, attrib.wo, reflect_dir, 
+                        attrib.mv.shininess, attrib.mv.diffuse, attrib.mv.specular);
+
+                    sampled_radiance += f_brdf * G;
+                }
+            }
+        }
+        L_d += qlights[k].color * (area / (float) light_samples) * sampled_radiance;
     }
 
     float zeta1 = rnd(payload.seed), zeta2(rnd(payload.seed));
@@ -404,15 +457,12 @@ RT_PROGRAM void pathTracer2()
     float pdf = 1.0f / (2.0f * M_PIf);
     float3 attenuation = (f_brdf * fmaxf(dot(norm, w_i), .0f)) * (1.0f / pdf);
     
-    // If not the final recursive depth yet
-    if (payload.depth < cf.maxDepth) {
-        payload.radiance = L_e * payload.throughput;
-    }
-    else {
-        // we've reached the final depth / bounce, just return the emission term
-        payload.radiance = L_e;
+    // First ray cast should accumulate emission term from objects 
+    if (payload.depth == 0) {
+        payload.radiance += L_e * payload.throughput;
     }
 
+    payload.radiance += L_d * payload.throughput;
     payload.throughput *= attenuation;
     payload.origin = attrib.intersection;
     payload.dir = w_i;

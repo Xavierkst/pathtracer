@@ -238,7 +238,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             optix::float3 ab = optix::make_float3(fvalues[3], fvalues[4], fvalues[5]);
             optix::float3 ac = optix::make_float3(fvalues[6], fvalues[7], fvalues[8]);
             optix::float3 intensity = optix::make_float3(fvalues[9], fvalues[10], fvalues[11]);
-            
             // quad lights don't need to have material values so we just default them
             MaterialValue defMv;
             defMv = mv;
@@ -251,11 +250,9 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri1.v1 = a;      // edge a
             tri1.v2 = a + ab; // edge b
             tri1.v3 = a + ac; // edge c
-
-            tri1.objType = LIGHT; // this triangle is a light source
+            // Treat triangle as a light source
+            tri1.objType = LIGHT; 
             tri1.mv = defMv;
-            // not sure if normal pointing right way..
-	    // lol I never am either it's all good.
             tri1.normal = optix::cross(ab, ac); 
 
             Triangle tri2;          // b-d-c
@@ -264,14 +261,13 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             tri2.v1 = a + ab;       // edge b
             tri2.v2 = a + ab + ac;  // edge d
             tri2.v3 = a + ac;       // edge c
-
+            // Treat triangle as a light source
             tri2.objType = LIGHT; 
             tri2.mv = defMv;
             tri2.normal = tri1.normal;
 
-	    scene->triangles.push_back(tri1);
+	        scene->triangles.push_back(tri1);
             scene->triangles.push_back(tri2);
-
             // we also have a quadLights vector 
             QuadLight quad; 
 			quad.tri1 = tri1;
@@ -343,7 +339,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             //else if (svalues[0].compare("volumetric") == 0) {
             //    mv.brdf_type = VOLUMETRIC;
             //}
-
         }
 
         else if (cmd == "gamma" && readValues(s, 1, fvalues)) {
@@ -352,7 +347,7 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
         }
 
         else if (cmd == "ior" && readValues(s, 1, fvalues)) {
-            // default is hemisphere sampling already
+            // default is hemisphere sampling 
             mv.ior = fvalues[0];
         }
 
@@ -376,9 +371,6 @@ std::shared_ptr<Scene> SceneLoader::load(std::string sceneFilename)
             mv.sigma_t = mv.sigma_a + mv.sigma_s;
             mv.g = fvalues[2];
         }
-
-        
-
     }
 
     in.close();
