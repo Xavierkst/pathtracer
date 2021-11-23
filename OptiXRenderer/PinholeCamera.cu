@@ -32,7 +32,7 @@ RT_PROGRAM void generateRays()
     float3 origin;
     Payload payload;
     int i = 0;
-
+    // cf.maxDepth = RT_DEFAULT_MAX;
     // Cast samples_per_pixel number of rays thru pixel xy
     for (int j = 0; j < samples_per_pixel; ++j) {
         // Prepare new payload for each sample

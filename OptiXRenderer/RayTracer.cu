@@ -29,6 +29,8 @@ rtDeclareVariable(uint, light_stratify, , );
 rtDeclareVariable(uint, next_event_est, , );
 rtDeclareVariable(uint, sampling_method, , );
 
+float3 computeDirectLight(optix::buffer<QuadLight>& qLights);
+
 RT_PROGRAM void closestHit()
 {
     MaterialValue mv = attrib.mv;
@@ -227,7 +229,7 @@ RT_PROGRAM void direct() {
     payload.done = true;
 }
 
-RT_CALLABLE_PROGRAM void computePolarAngles(uint sampling_method, float& phi, float& theta, float zeta[3], float t, float shininess) {
+RT_CALLABLE_PROGRAM void computePolarAngles(uint sampling_method, float phi, float theta, float zeta[3], float t, float shininess) {
 
     switch (sampling_method) {
     case HEMISPHERE_SAMPLING:
@@ -254,15 +256,13 @@ RT_CALLABLE_PROGRAM void computePolarAngles(uint sampling_method, float& phi, fl
     }
 }
 
-RT_CALLABLE_PROGRAM float3 phongBRDF(float3 wi, float3 wo, float3 reflect_vec, 
-    float shininess, float3 diffuse, float3 specular) {
-
-    return (diffuse / M_PIf) + 
-        (specular * ((shininess + 2.0f) / (2.0f * M_PIf)) * 
-            powf(fmaxf(dot(reflect_vec, wi), .0f), shininess));
+RT_CALLABLE_PROGRAM float3 phongBRDF(const float3 wi, const float3 wo, const float3 reflect_vec, 
+    const float shininess, const float3 diffuse, const float3 specular) {
+    return (diffuse / M_PIf) + (specular * ((shininess + 2.0f) / (2.0f * M_PIf)) 
+        * powf(fmaxf(dot(reflect_vec, wi), .0f), shininess));
 }
     
-RT_CALLABLE_PROGRAM float3 ggxBRDF(float3 wi, float3 wo, float3 n, float roughness, float3 specular) {
+RT_CALLABLE_PROGRAM float3 ggxBRDF(const float3 wi, const float3 wo, const float3 n, const float roughness, const float3 specular) {
     float wi_dot_n_dir = dot(wi, n);
     float wo_dot_n_dir = dot(wo, n);
     float alpha = roughness;
@@ -284,7 +284,7 @@ RT_CALLABLE_PROGRAM float3 ggxBRDF(float3 wi, float3 wo, float3 n, float roughne
     return (F * G * D) / (4.0f * wi_dot_n_dir * wo_dot_n_dir);
 }
 
-RT_CALLABLE_PROGRAM float ggxPDF(float3 wi, float3 wo, float3 n, float3 half_angle_vec, float t_val, float roughness) {
+RT_CALLABLE_PROGRAM float ggxPDF(const float3 wi, const float3 wo, const float3 n, const float3 half_angle_vec, const float t_val, const float roughness) {
     float alpha = roughness;
     float3 h = normalize(wi + wo); // half angle: 
     float theta_h = acosf(dot(half_angle_vec, n));
@@ -293,13 +293,13 @@ RT_CALLABLE_PROGRAM float ggxPDF(float3 wi, float3 wo, float3 n, float3 half_ang
     return ((1.0f - t_val) * fmaxf(dot(n, wi), .0f) / M_PIf) + ((t_val * D * dot(n, half_angle_vec)) / (4.0f * dot(half_angle_vec, wi)));
 }
 
-RT_CALLABLE_PROGRAM void swapValue(float& v1, float& v2) {
+RT_CALLABLE_PROGRAM void swapValue(float v1, float v2) {
     float temp = v1;
     v1 = v2;
     v2 = temp;
 }
 
-RT_CALLABLE_PROGRAM void genCoordFrame(float3 w, float3& u, float3& v) {
+RT_CALLABLE_PROGRAM void genCoordFrame(float3 w, float3 u, float3 v) {
     // incase a and w are closely aligned, swap a out for 
     // a diff arbitrary vector <1,0,0> instead of <0,1,0>
     float3 a = make_float3(.0f, 1.0f, .0f);
@@ -313,7 +313,7 @@ RT_CALLABLE_PROGRAM void genCoordFrame(float3 w, float3& u, float3& v) {
 
 // Generates a new w_i direction:
 // components u, v, w correspond to x, y and -wo
-RT_CALLABLE_PROGRAM float3 sphericalDir(float theta, float phi, float3 u, float3 v, float3 w) {
+RT_CALLABLE_PROGRAM float3 sphericalDir(const float theta, const float phi, const float3 u, const float3 v, const float3 w) {
     float3 sample_s = make_float3(cosf(phi) * 
         sinf(theta), sinf(phi) * sinf(theta), cosf(theta));
 
@@ -324,7 +324,7 @@ RT_CALLABLE_PROGRAM float3 sphericalDir(float theta, float phi, float3 u, float3
 // As per PBR book on volume scattering, we create phase function to 
 // vary each scatter direction within the volume. Simulates scattering behavior 
 // by light rays
-RT_CALLABLE_PROGRAM float phaseHG(float wi_dot_wo, float g) {
+RT_CALLABLE_PROGRAM float phaseHG(const float wi_dot_wo, const float g) {
     float numerator = (1.0f - (g * g)); 
     float denom = powf((1.0f + powf(g, 2.0f) + (2.0f * g * wi_dot_wo)), (3.0f / 2.0f));
 
@@ -334,8 +334,7 @@ RT_CALLABLE_PROGRAM float phaseHG(float wi_dot_wo, float g) {
 // Compute the value for a given phase function
 // and you don't necessarily have to sample a new dir w_i unless you want to. 
 // You can just get the phase function value
-RT_CALLABLE_PROGRAM float samplePhaseHG(float3 wo, float3& wi, float g, float rando_samples[]) {
-
+RT_CALLABLE_PROGRAM float samplePhaseHG(float3 wo, float3 wi, const float g, const float rando_samples[]) {
     // find cos_theta val for phaseHG function
     float cos_theta = .0f;
     // if g == 0 
@@ -360,32 +359,20 @@ RT_CALLABLE_PROGRAM float samplePhaseHG(float3 wo, float3& wi, float g, float ra
     return phaseHG(-cos_theta, g);
 }
 
-RT_CALLABLE_PROGRAM float computeTransmittance(float sigma_t, float param_dist_t, float ray_length) {
+RT_CALLABLE_PROGRAM float computeTransmittance(const float sigma_t, const float param_dist_t, const float ray_length) {
     float tr = expf(-sigma_t * fminf(param_dist_t, RT_DEFAULT_MAX) * ray_length); 
     return tr;
 }
 
-RT_CALLABLE_PROGRAM float computeScatterDist(float zeta, float sigma_t) {
+RT_CALLABLE_PROGRAM float computeScatterDist(const float zeta, const float sigma_t) {
     // scatter distance as per siggraph course p. 35
     float scatter_dist = -(logf(1.0f - zeta)) / sigma_t;
     return scatter_dist;
 }
 
-RT_PROGRAM void pathTracer2()
-{
-    Config cf = config[0];
+RT_CALLABLE_PROGRAM float3 computeDirectLight(const Config cf) {
     float3 L_d = make_float3(.0f);
-    float3 L_e = attrib.mv.emission;  
-
-    // Terminate any indirect rays that intersect a light source
-    if (payload.depth > 0 && attrib.objType == LIGHT) {
-        payload.radiance = make_float3(.0f);
-        payload.depth = cf.maxDepth;
-        payload.done = true;
-        return;
-    }
-
-    // Compute direct lighting
+    
     for (int k = 0; k < qlights.size(); ++k) {
         int rt_light_samples = (int)sqrtf(light_samples);
         float3 a = qlights[k].tri1.v1;
@@ -396,7 +383,7 @@ RT_PROGRAM void pathTracer2()
         float3 ac = c - a;
         float area = fabsf(length(cross(ab, ac)));
         float3 sampled_radiance = make_float3(.0f);
-
+    
         for (int i = 0; i < rt_light_samples; ++i) {
             for (int j = 0; j < rt_light_samples; ++j) {
                 float u1 = rnd(payload.seed);
@@ -409,7 +396,7 @@ RT_PROGRAM void pathTracer2()
                 else { 
                     light_sample_pos = a + ab * u1 + ac * u2;
                 }
-
+    
                 float3 light_sample_dir = normalize(light_sample_pos - attrib.intersection);
                 float dist = length(light_sample_pos - attrib.intersection);
                 float3 n_light = normalize(cross(ab, ac));
@@ -428,13 +415,33 @@ RT_PROGRAM void pathTracer2()
                         * fmaxf(dot(n_light, light_sample_dir), .0f);
                     float3 f_brdf = phongBRDF(light_sample_dir, attrib.wo, reflect_dir, 
                         attrib.mv.shininess, attrib.mv.diffuse, attrib.mv.specular);
-
+    
                     sampled_radiance += f_brdf * G;
                 }
             }
         }
         L_d += qlights[k].color * (area / (float) light_samples) * sampled_radiance;
     }
+
+    return L_d;
+}
+
+RT_PROGRAM void pathTracer2()
+{
+    Config cf = config[0];
+    float3 L_d = make_float3(.0f);
+    float3 L_e = attrib.mv.emission;  
+
+    // Terminate any indirect rays that intersect a light source
+    if (payload.depth > 0 && attrib.objType == LIGHT) {
+        payload.radiance = make_float3(.0f);
+        payload.depth = cf.maxDepth;
+        payload.done = true;
+        return;
+    }
+
+    // Compute direct lighting
+    L_d = computeDirectLight(cf);
 
     float zeta1 = rnd(payload.seed), zeta2(rnd(payload.seed));
     float theta = acosf(zeta1), phi = 2.0f * M_PIf * zeta2;
@@ -460,6 +467,22 @@ RT_PROGRAM void pathTracer2()
     // First ray cast should accumulate emission term from objects 
     if (payload.depth == 0) {
         payload.radiance += L_e * payload.throughput;
+    }
+
+    // Finished performing NEE--- now perform russian roulette
+    float q = 1.0f - fminf(fmaxf(fmaxf(payload.throughput.x, payload.throughput.y), payload.throughput.z), 1.0f);
+    // 'q' is the new (1-q) that we need to inverse and boost our ray
+    float p = rnd(payload.seed);
+    // terminate path
+    if (p < q) { 
+        // rtPrintf("%f\n", q);
+        payload.depth = cf.maxDepth;
+        payload.done = true;
+        return;
+    }
+    else { // boost the sub-path's energy
+        // rtPrintf("%f\n", q);
+        attenuation *= (1.0f / (1.0f - q));
     }
 
     payload.radiance += L_d * payload.throughput;
