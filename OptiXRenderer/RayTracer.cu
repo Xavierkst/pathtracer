@@ -466,27 +466,28 @@ RT_PROGRAM void pathTracer2()
     
     // First ray cast should accumulate emission term from objects 
     if (payload.depth == 0) {
-        payload.radiance += L_e * payload.throughput;
+        // thruput is 1.0f here--no attenuation
+        payload.radiance += L_e * payload.throughput; 
     }
+    
+    payload.radiance += L_d * payload.throughput; // first bounce accumulates L_d and L_e
+    // update the throughput after first intersectn so it doesnt stay at vec3(1.0f)
+    payload.throughput *= attenuation;
 
-    // Finished performing NEE--- now perform russian roulette
-    float q = 1.0f - fminf(fmaxf(fmaxf(payload.throughput.x, payload.throughput.y), payload.throughput.z), 1.0f);
-    // 'q' is the new (1-q) that we need to inverse and boost our ray
-    float p = rnd(payload.seed);
-    // terminate path
-    if (p < q) { 
-        // rtPrintf("%f\n", q);
+    float q = fminf(fmaxf(fmaxf(payload.throughput.x, payload.throughput.y), payload.throughput.z), 1.0f);
+    // Termination prob: the probability that a ray survives. If dice roll is greater than it, the ray is culled 
+    // Thus for high thruput paths, ray gets harder to terminate
+    if (rnd(payload.seed) > q) {
+        // terminate the ray
         payload.depth = cf.maxDepth;
         payload.done = true;
         return;
     }
-    else { // boost the sub-path's energy
-        // rtPrintf("%f\n", q);
-        attenuation *= (1.0f / (1.0f - q));
+    else { 
+        // ray survives and gets boosted by termination prob
+        payload.throughput *= 1.0f / (q);
     }
 
-    payload.radiance += L_d * payload.throughput;
-    payload.throughput *= attenuation;
     payload.origin = attrib.intersection;
     payload.dir = w_i;
     payload.depth++;
